@@ -164,10 +164,51 @@ class DashboardController extends Controller
                 ];
             });
 
+        $missingSummaries = Reservation::where('student_id', $user->id)
+            ->whereHas('timeblock', function ($query) {
+                $query->where('start_time', '<', now());
+            })
+            ->whereDoesntHave('timeblock.summaries', function ($query) use ($user) {
+                $query->where('student_id', $user->id);
+            })
+            ->with(['timeblock.teacher', 'timeblock.class'])
+            ->get()
+            ->map(function ($reservation) {
+                return [
+                    'id' => $reservation->id,
+                    'timeblock' => [
+                        'id' => $reservation->timeblock->id,
+                        'start_time' => $reservation->timeblock->start_time,
+                        'teacher' => [
+                            'name' => $reservation->timeblock->teacher->name,
+                        ],
+                        'class' => [
+                            'name' => $reservation->timeblock->class->name,
+                        ],
+                    ],
+                ];
+            });
+
+        $pendingInvitations = $user->classes()
+            ->wherePivot('status', 'pending')
+            ->with('creator')
+            ->get()
+            ->map(function ($class) {
+                return [
+                    'id' => $class->id,
+                    'name' => $class->name,
+                    'creator' => [
+                        'name' => $class->creator->name,
+                    ],
+                ];
+            });
+
         return Inertia::render('dashboard/student', [
             'availableTimeblocks' => $availableTimeblocks,
             'upcomingReservations' => $upcomingReservations,
             'recentSummaries' => $recentSummaries,
+            'missingSummaries' => $missingSummaries,
+            'pendingInvitations' => $pendingInvitations,
         ]);
     }
 }

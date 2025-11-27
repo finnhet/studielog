@@ -35,9 +35,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('locations', LocationController::class)->except(['show', 'create', 'edit']);
     
+    Route::get('classes/students/search', [ClassController::class, 'searchStudents'])->name('classes.students.search');
     Route::resource('classes', ClassController::class)->except(['show', 'create', 'edit']);
     Route::post('classes/{class}/students', [ClassController::class, 'addStudent'])->name('classes.students.add');
     Route::delete('classes/{class}/students', [ClassController::class, 'removeStudent'])->name('classes.students.remove');
+    Route::post('classes/{class}/invitations/accept', [ClassController::class, 'acceptInvitation'])->name('classes.invitations.accept');
+    Route::post('classes/{class}/invitations/reject', [ClassController::class, 'rejectInvitation'])->name('classes.invitations.reject');
     
     Route::resource('timeblocks', TimeblockController::class)->except(['show', 'create', 'edit']);
     

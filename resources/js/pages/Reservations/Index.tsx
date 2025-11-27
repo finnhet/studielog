@@ -72,51 +72,61 @@ export default function ReservationsIndex({ auth, reservations }: Props) {
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {reservations.map((reservation) => {
-                const isPast = isPastReservation(reservation.timeblock.start_time);
-                
-                return (
-                  <Card key={reservation.id}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-bold text-gray-900">
-                            {reservation.timeblock.class.name}
-                          </h3>
-                          {getStatusBadge(reservation.status)}
-                          {isPast && (
-                            <Badge variant="default">Voltooid</Badge>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-gray-600">
-                            Docent: {reservation.timeblock.teacher.name}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Locatie: {reservation.timeblock.location}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Start: {new Date(reservation.timeblock.start_time).toLocaleString('nl-NL')}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Einde: {new Date(reservation.timeblock.end_time).toLocaleString('nl-NL')}
-                          </p>
-                        </div>
-                      </div>
-                      {!isPast && reservation.status === 'confirmed' && (
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handleCancel(reservation.id)}
-                        >
-                          Annuleren
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
+            <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum & Tijd</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klas & Docent</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Locatie</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {reservations.map((reservation) => {
+                      const isPast = isPastReservation(reservation.timeblock.start_time);
+                      return (
+                        <tr key={reservation.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {new Date(reservation.timeblock.start_time).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(reservation.timeblock.start_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - 
+                              {new Date(reservation.timeblock.end_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{reservation.timeblock.class.name}</div>
+                            <div className="text-xs text-gray-500">{reservation.timeblock.teacher.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {reservation.timeblock.location}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              {getStatusBadge(reservation.status)}
+                              {isPast && <Badge variant="default">Voltooid</Badge>}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            {!isPast && reservation.status === 'confirmed' && (
+                              <button 
+                                onClick={() => handleCancel(reservation.id)}
+                                className="text-red-600 hover:text-red-900 font-medium"
+                              >
+                                Annuleren
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

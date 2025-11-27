@@ -12,6 +12,7 @@ interface User {
   name: string;
   email: string;
   role: string;
+  status?: string;
 }
 
 interface Location {
@@ -42,6 +43,8 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [managingStudents, setManagingStudents] = useState<ClassItem | null>(null);
   const [studentEmail, setStudentEmail] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const createForm = useForm({
     name: '',
@@ -52,6 +55,36 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
     name: '',
     location_id: '',
   });
+
+  const handleSearch = async (query: string) => {
+      setStudentEmail(query);
+      setSelectedUser(null); // Reset selection when typing
+      
+      if (query.length < 2) {
+          setSearchResults([]);
+          return;
+      }
+      
+      try {
+          const response = await fetch(`/classes/students/search?query=${encodeURIComponent(query)}`, {
+              headers: {
+                  'Accept': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest',
+              }
+          });
+          if (!response.ok) throw new Error('Network response was not ok');
+          const data = await response.json();
+          setSearchResults(data);
+      } catch (error) {
+          console.error('Search failed', error);
+      }
+  };
+
+  const selectUser = (user: User) => {
+      setSelectedUser(user);
+      setStudentEmail(user.name + ` (${user.email})`);
+      setSearchResults([]);
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,9 +118,15 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
     e.preventDefault();
     if (!managingStudents) return;
 
-    router.post(`/classes/${managingStudents.id}/students`, { email: studentEmail }, {
+    const data = selectedUser 
+        ? { user_id: selectedUser.id } 
+        : { email: studentEmail };
+
+    router.post(`/classes/${managingStudents.id}/students`, data, {
       onSuccess: () => {
         setStudentEmail('');
+        setSelectedUser(null);
+        setSearchResults([]);
       },
     });
   };
@@ -236,17 +275,36 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
         onClose={() => setManagingStudents(null)}
         title={`Studenten Beheren - ${managingStudents?.name}`}
       >
-        <form onSubmit={handleAddStudent} className="mb-6">
-          <Input
-            label="Student Email"
-            type="email"
-            value={studentEmail}
-            onChange={(e) => setStudentEmail(e.target.value)}
-            placeholder="student@example.com"
-            required
-          />
+        <form onSubmit={handleAddStudent} className="mb-6 relative">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+                Student Zoeken of Email
+            </label>
+            <input
+                type="text"
+                className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={studentEmail}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Zoek op naam of vul email in..."
+                autoComplete="off"
+            />
+            {searchResults.length > 0 && (
+                <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
+                    {searchResults.map(user => (
+                        <div 
+                            key={user.id}
+                            className="p-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                            onClick={() => selectUser(user)}
+                        >
+                            <div className="font-medium text-gray-900">{user.name}</div>
+                            <div className="text-xs text-gray-500">{user.email}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+          </div>
           <Button type="submit" size="sm">
-            Student Toevoegen
+            {selectedUser ? 'Geselecteerde Student Uitnodigen' : 'Uitnodigen via Email'}
           </Button>
         </form>
 
@@ -260,7 +318,14 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
                   className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
                 >
                   <div>
-                    <p className="font-medium text-gray-900">{student.name}</p>
+                    <p className="font-medium text-gray-900">
+                        {student.name}
+                        {student.status === 'pending' && (
+                            <span className="ml-2 text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">
+                                Uitgenodigd
+                            </span>
+                        )}
+                    </p>
                     <p className="text-sm text-gray-600">{student.email}</p>
                   </div>
                   <Button
