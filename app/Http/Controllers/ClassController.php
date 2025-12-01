@@ -6,6 +6,7 @@ use App\Models\ClassModel;
 use App\Models\Location;
 use App\Models\User;
 use App\Notifications\ClassInvitation;
+use App\Services\MicrosoftGraphService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -110,7 +111,7 @@ class ClassController extends Controller
         return redirect()->route('classes.index');
     }
 
-    public function addStudent(Request $request, ClassModel $class)
+    public function addStudent(Request $request, ClassModel $class, MicrosoftGraphService $graphService)
     {
         $this->authorize('manageStudents', $class);
 
@@ -118,6 +119,35 @@ class ClassController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'email' => 'required_without:user_id|nullable|email',
         ]);
+
+        $currentUser = $request->user();
+        
+        // Check Microsoft connection
+        if (!$currentUser->microsoft_access_token) {
+            return back()->withErrors(['email' => 'Je moet verbonden zijn met Microsoft om uitnodigingen te versturen.']);
+        }
+
+        // Refresh token if needed
+        if ($currentUser->microsoft_token_expires && $currentUser->microsoft_token_expires->isPast()) {
+            if ($currentUser->microsoft_refresh_token) {
+                try {
+                    $newTokens = $graphService->refreshAccessToken(decrypt($currentUser->microsoft_refresh_token));
+                    if (isset($newTokens['access_token'])) {
+                        $currentUser->update([
+                            'microsoft_access_token' => encrypt($newTokens['access_token']),
+                            'microsoft_refresh_token' => isset($newTokens['refresh_token']) ? encrypt($newTokens['refresh_token']) : $currentUser->microsoft_refresh_token,
+                            'microsoft_token_expires' => now()->addSeconds($newTokens['expires_in']),
+                        ]);
+                    } else {
+                        return back()->withErrors(['email' => 'Microsoft sessie verlopen. Log opnieuw in.']);
+                    }
+                } catch (\Exception $e) {
+                    return back()->withErrors(['email' => 'Microsoft sessie verlopen. Log opnieuw in.']);
+                }
+            } else {
+                return back()->withErrors(['email' => 'Microsoft sessie verlopen. Log opnieuw in.']);
+            }
+        }
 
         if ($request->filled('user_id')) {
             $user = User::find($validated['user_id']);
@@ -128,34 +158,49 @@ class ClassController extends Controller
                 $user = User::create([
                     'name' => explode('@', $validated['email'])[0],
                     'email' => $validated['email'],
-                    'password' => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
+                    'password' => null, // No password, they must use Microsoft
                     'role' => 'student',
                 ]);
             }
         }
 
         if (!$user->isStudent()) {
-            return back()->withErrors(['email' => 'User is not a student']);
+            return back()->withErrors(['email' => 'Gebruiker is geen student']);
         }
 
         if ($class->users()->where('user_id', $user->id)->exists()) {
              $existing = $class->users()->where('user_id', $user->id)->first();
              if ($existing->pivot->status === 'pending') {
-                 return back()->withErrors(['email' => 'Student already invited']);
+                 return back()->withErrors(['email' => 'Student is al uitgenodigd']);
              }
-            return back()->withErrors(['email' => 'Student is already in this class']);
+            return back()->withErrors(['email' => 'Student zit al in deze klas']);
         }
 
         $class->users()->attach($user->id, ['status' => 'pending']);
         
         try {
-            $user->notify(new ClassInvitation($class));
-        } catch (\Exception $e) {
-            // Log error but don't fail the request if email fails
-            \Illuminate\Support\Facades\Log::error('Failed to send class invitation email: ' . $e->getMessage());
-        }
+            $token = decrypt($currentUser->microsoft_access_token);
+            $graphService->setAccessToken($token);
 
-        return redirect()->back()->with('success', 'Invitation sent to student');
+            $loginUrl = route('auth.microsoft.redirect');
+
+            $graphService->sendMail([
+                'subject' => "Uitnodiging voor klas: {$class->name}",
+                'body' => "
+                    <h1>Je bent uitgenodigd voor de klas {$class->name}</h1>
+                    <p>Beste {$user->name},</p>
+                    <p>Je bent door {$currentUser->name} uitgenodigd om deel te nemen aan de klas <strong>{$class->name}</strong> in StudieLog.</p>
+                    <p>Klik op de onderstaande link om in te loggen met je Microsoft account en de uitnodiging te accepteren:</p>
+                    <p><a href=\"{$loginUrl}\">Inloggen bij StudieLog</a></p>
+                ",
+                'to' => [$user->email],
+            ]);
+
+            return back()->with('success', 'Uitnodiging verstuurd naar student');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send class invitation email: ' . $e->getMessage());
+            return back()->with('success', 'Student toegevoegd, maar email kon niet worden verzonden: ' . $e->getMessage());
+        }
     }
 
     public function acceptInvitation(ClassModel $class)

@@ -181,7 +181,12 @@ class MicrosoftGraphService
         $response = Http::withToken($this->accessToken)
             ->post('https://graph.microsoft.com/v1.0/me/sendMail', $message);
 
-        return $response->successful();
+        if (!$response->successful()) {
+            \Log::error('Graph API send mail error: ' . $response->body());
+            throw new \Exception('Failed to send email: ' . $response->body());
+        }
+
+        return true;
     }
 
     public function getCalendarEvents(string $startDate, string $endDate)

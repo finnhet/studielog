@@ -8,6 +8,7 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MicrosoftAuthController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\SummaryController;
+use App\Http\Controllers\TeacherInvitationController;
 use App\Http\Controllers\TimeblockController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -15,13 +16,14 @@ use Laravel\Fortify\Features;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
+        'canRegister' => false,
     ]);
 })->name('home');
 
 Route::middleware('web')->group(function () {
     Route::get('auth/microsoft/redirect', [MicrosoftOAuthController::class, 'redirect'])->name('auth.microsoft.redirect');
     Route::get('auth/microsoft/callback', [MicrosoftOAuthController::class, 'callback'])->name('auth.microsoft.callback');
+    Route::get('register/teacher', [TeacherInvitationController::class, 'startRegistration'])->name('register.teacher.start');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -49,6 +51,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('summaries', SummaryController::class)->except(['show', 'create', 'edit']);
     Route::patch('summaries/{summary}/approve', [SummaryController::class, 'approve'])->name('summaries.approve');
     Route::patch('summaries/{summary}/reject', [SummaryController::class, 'reject'])->name('summaries.reject');
+
+    Route::get('teachers/invite', [TeacherInvitationController::class, 'create'])->name('teachers.invite');
+    Route::post('teachers/invite', [TeacherInvitationController::class, 'store'])->name('teachers.invite.store');
 });
 
 require __DIR__.'/settings.php';

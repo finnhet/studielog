@@ -48,20 +48,32 @@ class MicrosoftOAuthController extends Controller
                 ]);
                 \Log::info('User updated successfully', ['user_id' => $user->id]);
             } else {
-                \Log::info('Creating new user');
-                $user = User::create([
-                    'name' => $microsoftUser->name,
-                    'email' => $microsoftUser->email,
-                    'microsoft_id' => $microsoftUser->id,
-                    'avatar' => $microsoftUser->avatar,
-                    'microsoft_access_token' => encrypt($microsoftUser->token),
-                    'microsoft_refresh_token' => $microsoftUser->refreshToken ? encrypt($microsoftUser->refreshToken) : null,
-                    'microsoft_token_expires' => now()->addSeconds($microsoftUser->expiresIn ?? 3600),
-                    'role' => 'student',
-                    'password' => null,
-                    'email_verified_at' => now(),
-                ]);
-                \Log::info('User created successfully', ['user_id' => $user->id]);
+                // Check if this is a teacher registration via invite
+                $role = session('register_role');
+                
+                if ($role === 'teacher') {
+                    \Log::info('Creating new teacher user from invite');
+                    // Clear the session variable after use
+                    session()->forget('register_role');
+
+                    $user = User::create([
+                        'name' => $microsoftUser->name,
+                        'email' => $microsoftUser->email,
+                        'microsoft_id' => $microsoftUser->id,
+                        'avatar' => $microsoftUser->avatar,
+                        'microsoft_access_token' => encrypt($microsoftUser->token),
+                        'microsoft_refresh_token' => $microsoftUser->refreshToken ? encrypt($microsoftUser->refreshToken) : null,
+                        'microsoft_token_expires' => now()->addSeconds($microsoftUser->expiresIn ?? 3600),
+                        'role' => $role,
+                        'password' => null,
+                        'email_verified_at' => now(),
+                    ]);
+                    \Log::info('User created successfully', ['user_id' => $user->id, 'role' => $role]);
+                } else {
+                    // No existing user and no invite -> Deny access
+                    \Log::warning('Login attempt denied: No account and no invite', ['email' => $microsoftUser->email]);
+                    return redirect()->route('login')->withErrors(['error' => 'Geen account gevonden. Vraag je docent om een uitnodiging.']);
+                }
             }
 
             Auth::guard('web')->login($user, true);

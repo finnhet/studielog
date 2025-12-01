@@ -156,7 +156,7 @@ export default function SummariesIndex({ auth, summaries, classes, filters }: Pr
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-6">
-          </div>
+al            </div>
 
           <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-wrap gap-4 items-end">
             <div className="w-full sm:w-64">
