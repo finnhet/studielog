@@ -2,8 +2,8 @@ import { update } from '@/routes/password';
 import { Form, Head } from '@inertiajs/react';
 
 import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button-legacy';
+import { Input } from '@/components/ui/input-legacy';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';

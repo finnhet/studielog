@@ -1,6 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
-import { Clock, Calendar, FileText, Users, MapPin, CheckCircle, AlertCircle, ArrowRight, LayoutDashboard } from 'lucide-react';
+import Card from '@/components/ui/Card';
+import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 
 interface User {
   id: number;
@@ -51,198 +53,133 @@ interface Props {
 }
 
 export default function TeacherDashboard({ auth, upcomingTimeblocks, pendingSummaries, stats }: Props) {
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'success' | 'warning' | 'default'> = {
+      available: 'success',
+      reserved: 'warning',
+      completed: 'default',
+    };
+    return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
+  };
+
   return (
     <AuthenticatedLayout user={auth.user}>
       <Head title="Dashboard" />
 
-      <div className="py-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="py-12">
+        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+          <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Welkom, {auth.user.name}!</h2>
-              <p className="text-gray-500 mt-1 text-lg">Hier is een overzicht van je activiteiten.</p>
+              <h2 className="text-3xl font-bold text-gray-900">Welkom, {auth.user.name}!</h2>
+              <p className="text-gray-700 mt-2 text-lg">Overzicht van je studiegesprekken</p>
             </div>
-            <a 
-                href="/microsoft/redirect"
-                className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
-            >
-                <Calendar className="w-4 h-4 mr-2" />
-                Koppel Outlook
-            </a>
+            <Button onClick={() => window.location.href = '/microsoft/redirect'}>
+              📅 Koppel Outlook
+            </Button>
           </div>
 
-          {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white overflow-hidden shadow-sm rounded-xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Totaal Tijdblokken</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalTimeblocks}</p>
-                    </div>
-                    <div className="p-3 bg-indigo-50 rounded-lg">
-                        <Clock className="w-6 h-6 text-indigo-600" />
-                    </div>
-                </div>
-            </div>
-            <div className="bg-white overflow-hidden shadow-sm rounded-xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Reserveringen</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalReservations}</p>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-lg">
-                        <Users className="w-6 h-6 text-green-600" />
-                    </div>
-                </div>
-            </div>
-            <div className="bg-white overflow-hidden shadow-sm rounded-xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Te beoordelen</p>
-                        <p className="text-3xl font-bold text-orange-600 mt-2">{stats.pendingSummaries}</p>
-                    </div>
-                    <div className="p-3 bg-orange-50 rounded-lg">
-                        <FileText className="w-6 h-6 text-orange-600" />
-                    </div>
-                </div>
-            </div>
+            <Card>
+              <div className="text-center">
+                <p className="text-gray-600 text-sm font-medium">Totaal Tijdblokken</p>
+                <p className="text-5xl font-bold text-gray-900 mt-2">{stats.totalTimeblocks}</p>
+              </div>
+            </Card>
+            <Card>
+              <div className="text-center">
+                <p className="text-gray-600 text-sm font-medium">Reserveringen</p>
+                <p className="text-5xl font-bold text-gray-900 mt-2">{stats.totalReservations}</p>
+              </div>
+            </Card>
+            <Card>
+              <div className="text-center">
+                <p className="text-gray-600 text-sm font-medium">Te beoordelen</p>
+                <p className="text-5xl font-bold bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent mt-2">{stats.pendingSummaries}</p>
+              </div>
+            </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Upcoming Timeblocks */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-100 flex flex-col">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-gray-400" />
-                        Aankomende Tijdblokken
-                    </h3>
-                    <Link href="/timeblocks" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
-                        Alles bekijken <ArrowRight className="w-4 h-4" />
-                    </Link>
-                </div>
-                <div className="p-6 flex-1">
-                    {upcomingTimeblocks.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                            <Calendar className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                            <p>Geen aankomende tijdblokken</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card title="Aankomende Tijdblokken">
+              {upcomingTimeblocks.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">Geen aankomende tijdblokken</p>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingTimeblocks.map((timeblock) => (
+                    <div key={timeblock.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-gray-900">{timeblock.class.name}</p>
+                          <p className="text-sm text-gray-600">{timeblock.location}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {new Date(timeblock.start_time).toLocaleString('nl-NL')}
+                          </p>
+                          {timeblock.reservation && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              Student: {timeblock.reservation.student.name}
+                            </p>
+                          )}
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {upcomingTimeblocks.map((timeblock) => (
-                                <div key={timeblock.id} className="flex items-start gap-4 p-4 rounded-lg bg-gray-50 border border-gray-100 hover:border-indigo-200 transition-colors">
-                                    <div className="flex-shrink-0 mt-1">
-                                        <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            {timeblock.class.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                                            <MapPin className="w-3 h-3" /> {timeblock.location}
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            {new Date(timeblock.start_time).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                        </p>
-                                        {timeblock.reservation && (
-                                            <div className="mt-2 flex items-center gap-2 text-sm text-indigo-600 bg-indigo-50 px-2 py-1 rounded w-fit">
-                                                <Users className="w-3 h-3" />
-                                                {timeblock.reservation.student.name}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                        timeblock.status === 'available' ? 'bg-green-100 text-green-700' :
-                                        timeblock.status === 'reserved' ? 'bg-orange-100 text-orange-700' :
-                                        'bg-gray-100 text-gray-700'
-                                    }`}>
-                                        {timeblock.status}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                        {getStatusBadge(timeblock.status)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-            </div>
+              )}
+              <Link
+                href="/timeblocks"
+                className="block text-center text-gray-600 hover:text-gray-700 font-medium mt-4"
+              >
+                Alle tijdblokken →
+              </Link>
+            </Card>
 
-            {/* Pending Summaries */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-100 flex flex-col">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-gray-400" />
-                        Verslagen te beoordelen
-                    </h3>
-                    <Link href="/summaries" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
-                        Alles bekijken <ArrowRight className="w-4 h-4" />
-                    </Link>
-                </div>
-                <div className="p-6 flex-1">
-                    {pendingSummaries.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                            <CheckCircle className="w-12 h-12 mx-auto text-green-300 mb-3" />
-                            <p>Je bent helemaal bij!</p>
+            <Card title="Verslagen te beoordelen">
+              {pendingSummaries.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">Geen verslagen te beoordelen</p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingSummaries.map((summary) => (
+                    <div key={summary.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-gray-900">{summary.student.name}</p>
+                          <p className="text-sm text-gray-600">{summary.timeblock.class.name}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {new Date(summary.timeblock.start_time).toLocaleDateString('nl-NL')}
+                          </p>
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {pendingSummaries.map((summary) => (
-                                <div key={summary.id} className="flex items-start gap-4 p-4 rounded-lg bg-orange-50 border border-orange-100 hover:border-orange-200 transition-colors">
-                                    <div className="flex-shrink-0 mt-1">
-                                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            {summary.student.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            {summary.timeblock.class.name}
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            {new Date(summary.timeblock.start_time).toLocaleDateString('nl-NL')}
-                                        </p>
-                                    </div>
-                                    <Link 
-                                        href={`/summaries/${summary.id}`}
-                                        className="px-3 py-1.5 bg-white text-orange-600 text-xs font-medium rounded-lg border border-orange-200 hover:bg-orange-50 transition-colors"
-                                    >
-                                        Beoordelen
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                        <Badge variant="warning">pending</Badge>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-            </div>
+              )}
+              <Link
+                href="/summaries"
+                className="block text-center text-gray-600 hover:text-gray-700 font-medium mt-4"
+              >
+                Alle verslagen →
+              </Link>
+            </Card>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/timeblocks" className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
-                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 transition-colors mb-3">
-                    <Clock className="w-5 h-5 text-indigo-600 group-hover:text-white transition-colors" />
-                </div>
-                <h3 className="font-semibold text-gray-900">Tijdblokken</h3>
-                <p className="text-xs text-gray-500 mt-1">Beheer beschikbaarheid</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link href="/timeblocks" className="block p-6 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <h3 className="font-semibold text-gray-900">Tijdblokken</h3>
+              <p className="text-sm text-gray-700 mt-1">Beheer je tijdblokken</p>
             </Link>
-            <Link href="/classes" className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
-                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 transition-colors mb-3">
-                    <Users className="w-5 h-5 text-indigo-600 group-hover:text-white transition-colors" />
-                </div>
-                <h3 className="font-semibold text-gray-900">Klassen</h3>
-                <p className="text-xs text-gray-500 mt-1">Beheer klassen</p>
+            <Link href="/classes" className="block p-6 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+              <h3 className="font-semibold">Klassen</h3>
+              <p className="text-sm text-gray-600 mt-1">Beheer je klassen</p>
             </Link>
-            <Link href="/locations" className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
-                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 transition-colors mb-3">
-                    <MapPin className="w-5 h-5 text-indigo-600 group-hover:text-white transition-colors" />
-                </div>
-                <h3 className="font-semibold text-gray-900">Vestigingen</h3>
-                <p className="text-xs text-gray-500 mt-1">Beheer locaties</p>
+            <Link href="/locations" className="block p-6 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <h3 className="font-semibold text-gray-900">Vestigingen</h3>
+              <p className="text-sm text-gray-700 mt-1">Beheer vestigingen</p>
             </Link>
-            <Link href="/summaries" className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
-                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 transition-colors mb-3">
-                    <FileText className="w-5 h-5 text-indigo-600 group-hover:text-white transition-colors" />
-                </div>
-                <h3 className="font-semibold text-gray-900">Verslagen</h3>
-                <p className="text-xs text-gray-500 mt-1">Alle verslagen</p>
+            <Link href="/summaries" className="block p-6 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+              <h3 className="font-semibold text-orange-900">Verslagen</h3>
+              <p className="text-sm text-orange-700 mt-1">Beoordeel verslagen</p>
             </Link>
           </div>
         </div>

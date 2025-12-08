@@ -19,7 +19,6 @@ class Timeblock extends Model
         'end_time',
         'location',
         'status',
-        'outlook_event_id',
     ];
 
     protected $casts = [

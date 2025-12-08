@@ -12,13 +12,13 @@ export default function Button({
   children, 
   ...props 
 }: ButtonProps) {
-  const baseClasses = 'font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
+  const baseClasses = 'font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl';
   
   const variants = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
-    danger: 'bg-red-600 hover:bg-red-700 text-white',
-    success: 'bg-green-600 hover:bg-green-700 text-white',
+    primary: 'bg-gray-700 hover:bg-gray-800 text-white',
+    secondary: 'bg-gray-500 hover:bg-gray-600 text-white',
+    danger: 'bg-gray-600 hover:bg-gray-700 text-white',
+    success: 'bg-gray-500 hover:bg-gray-600 text-white',
   };
 
   const sizes = {

@@ -113,5 +113,12 @@
         },
         "jsx": "react-jsx"
     },
-    "include": ["resources/js/**/*.ts", "resources/js/**/*.d.ts", "resources/js/**/*.tsx"]
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.d.ts", "resources/js/**/*.tsx"],
+    "exclude": [
+        "resources/js/components/ui/card.tsx",
+        "resources/js/components/ui/button.tsx",
+        "resources/js/components/ui/input.tsx",
+        "resources/js/components/ui/badge.tsx",
+        "resources/js/components/ui/select.tsx"
+    ]
 }

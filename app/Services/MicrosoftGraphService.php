@@ -121,10 +121,6 @@ class MicrosoftGraphService
             ];
         }
 
-        if (isset($data['body'])) {
-            $event['body'] = $data['body'];
-        }
-
         try {
             $response = Http::withToken($this->accessToken)
                 ->patch('https://graph.microsoft.com/v1.0/me/events/' . $eventId, $event);

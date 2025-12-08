@@ -15,21 +15,6 @@ class ClassController extends Controller
 {
     use AuthorizesRequests;
 
-    public function searchStudents(Request $request)
-    {
-        $query = $request->input('query');
-        
-        $students = User::where('role', 'student')
-            ->where(function($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
-            })
-            ->limit(10)
-            ->get(['id', 'name', 'email']);
-            
-        return response()->json($students);
-    }
-
     public function index()
     {
         $this->authorize('viewAny', ClassModel::class);
@@ -52,7 +37,6 @@ class ClassController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'status' => $user->pivot->status,
                     ];
                 }),
             ];
@@ -116,12 +100,10 @@ class ClassController extends Controller
         $this->authorize('manageStudents', $class);
 
         $validated = $request->validate([
-            'user_id' => 'nullable|exists:users,id',
-            'email' => 'required_without:user_id|nullable|email',
+            'user_id' => 'required|exists:users,id',
         ]);
-
         $currentUser = $request->user();
-        
+
         // Check Microsoft connection
         if (!$currentUser->microsoft_access_token) {
             return back()->withErrors(['email' => 'Je moet verbonden zijn met Microsoft om uitnodigingen te versturen.']);

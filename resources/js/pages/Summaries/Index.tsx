@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
 
 interface User {
   id: number;
@@ -39,11 +38,9 @@ interface Summary {
 interface Props {
   auth: { user: User };
   summaries: Summary[];
-  classes: { id: number; name: string }[];
-  filters: { teacher_id?: string; class_id?: string };
 }
 
-export default function SummariesIndex({ auth, summaries, classes, filters }: Props) {
+export default function SummariesIndex({ auth, summaries }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSummary, setEditingSummary] = useState<Summary | null>(null);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -55,7 +52,7 @@ export default function SummariesIndex({ auth, summaries, classes, filters }: Pr
     content: '',
   });
 
-  const { data: feedbackData, setData: setFeedbackData, post: postFeedback, patch: patchFeedback } = useForm({
+  const { data: feedbackData, setData: setFeedbackData, post: postFeedback } = useForm({
     feedback: '',
   });
 
@@ -129,14 +126,6 @@ export default function SummariesIndex({ auth, summaries, classes, filters }: Pr
     });
   };
 
-  const handleFilterChange = (key: string, value: string) => {
-    router.get(
-      '/summaries',
-      { ...filters, [key]: value },
-      { preserveState: true, replace: true }
-    );
-  };
-
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'success' | 'warning' | 'danger'> = {
       approved: 'success',
@@ -156,23 +145,13 @@ export default function SummariesIndex({ auth, summaries, classes, filters }: Pr
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-6">
-al            </div>
-
-          <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-wrap gap-4 items-end">
-            <div className="w-full sm:w-64">
-                <Select
-                    label="Filter op klas"
-                    options={classes.map(c => ({ value: c.id, label: c.name }))}
-                    value={filters.class_id || ''}
-                    onChange={(e) => handleFilterChange('class_id', e.target.value)}
-                />
-            </div>
-            {(filters.class_id) && (
-                <div className="mb-4">
-                    <Button variant="secondary" onClick={() => router.get('/summaries')}>
-                        Reset filters
-                    </Button>
-                </div>
+            <h2 className="text-3xl font-bold text-gray-900">
+              {isStudent ? 'Mijn Samenvattingen' : 'Samenvattingen'}
+            </h2>
+            {isStudent && (
+              <Button onClick={openCreateModal}>
+                Nieuwe Samenvatting
+              </Button>
             )}
           </div>
 
@@ -279,7 +258,7 @@ al            </div>
               value={data.content}
               onChange={(e) => setData('content', e.target.value)}
               rows={8}
-              className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
             {errors.content && (
@@ -318,7 +297,7 @@ al            </div>
               value={feedbackData.feedback}
               onChange={(e) => setFeedbackData('feedback', e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required={actionType === 'reject'}
             />
           </div>

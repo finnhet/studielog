@@ -1,9 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
+import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface User {
   id: number;
@@ -40,10 +40,7 @@ interface Props {
 export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date(weekStart));
 
-  const weekDays = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
-  const START_HOUR = 8;
-  const END_HOUR = 18;
-  const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+  const weekDays = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
   
   const getWeekDates = (startDate: Date) => {
     const dates = [];
@@ -88,7 +85,7 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
         tbDate.getMonth() === date.getMonth() &&
         tbDate.getDate() === date.getDate()
       );
-    });
+    }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   };
 
   const formatTime = (dateString: string) => {
@@ -100,14 +97,14 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
     return date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      available: 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200',
-      reserved: 'bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200',
-      completed: 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200',
-      cancelled: 'bg-red-100 border-red-300 text-red-800 hover:bg-red-200',
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'success' | 'warning' | 'default' | 'danger'> = {
+      available: 'success',
+      reserved: 'warning',
+      completed: 'default',
+      cancelled: 'danger',
     };
-    return colors[status] || 'bg-blue-100 border-blue-300 text-blue-800 hover:bg-blue-200';
+    return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
   };
 
   const isToday = (date: Date) => {
@@ -125,135 +122,109 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
 
   const isStudent = auth.user.role === 'student';
 
-  const getPositionStyles = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    
-    const startHour = startDate.getHours() + startDate.getMinutes() / 60;
-    const endHour = endDate.getHours() + endDate.getMinutes() / 60;
-    
-    const top = (startHour - START_HOUR) * 60; // 60px per hour
-    const height = (endHour - startHour) * 60;
-    
-    return {
-      top: `${top}px`,
-      height: `${height}px`,
-    };
-  };
-
   return (
     <AuthenticatedLayout user={auth.user}>
       <Head title="Agenda" />
 
-      <div className="py-8 h-[calc(100vh-65px)] flex flex-col">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 w-full flex-1 flex flex-col">
+      <div className="py-12">
+        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">
+            <h2 className="text-4xl font-bold text-gray-900">
               Agenda
             </h2>
-            <div className="flex items-center space-x-4">
-              <span className="text-lg font-medium text-gray-600">
-                {formatDate(weekDates[0])} - {formatDate(weekDates[6])}
-              </span>
-              <div className="flex space-x-1 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-                <button onClick={() => navigateWeek(-1)} className="p-1 hover:bg-gray-100 rounded">
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                <button onClick={goToToday} className="px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded">
-                  Vandaag
-                </button>
-                <button onClick={() => navigateWeek(1)} className="p-1 hover:bg-gray-100 rounded">
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
+            <div className="flex space-x-2">
+              <Button size="sm" variant="secondary" onClick={() => navigateWeek(-1)}>
+                ← Vorige Week
+              </Button>
+              <Button size="sm" onClick={goToToday}>
+                Vandaag
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => navigateWeek(1)}>
+                Volgende Week →
+              </Button>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="grid grid-cols-8 border-b border-gray-200">
-              <div className="p-4 border-r border-gray-200 bg-gray-50"></div>
-              {weekDates.map((date, index) => (
-                <div 
-                  key={index} 
-                  className={`p-4 text-center border-r border-gray-200 last:border-r-0 ${
-                    isToday(date) ? 'bg-blue-50' : 'bg-white'
-                  }`}
-                >
-                  <div className={`text-xs font-medium uppercase mb-1 ${
-                    isToday(date) ? 'text-blue-600' : 'text-gray-500'
-                  }`}>
-                    {weekDays[index]}
-                  </div>
-                  <div className={`text-xl font-bold ${
-                    isToday(date) ? 'text-blue-700' : 'text-gray-900'
-                  }`}>
-                    {date.getDate()}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <Card className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-700">
+              Week van {formatDate(weekDates[0])} - {formatDate(weekDates[6])}
+            </h3>
+          </Card>
 
-            {/* Calendar Grid */}
-            <div className="flex-1 overflow-y-auto relative">
-              <div className="grid grid-cols-8 min-h-[600px]">
-                {/* Time Column */}
-                <div className="border-r border-gray-200 bg-gray-50">
-                  {HOURS.map((hour) => (
-                    <div key={hour} className="h-[60px] border-b border-gray-100 relative">
-                      <span className="absolute -top-3 right-2 text-xs text-gray-400">
-                        {hour}:00
-                      </span>
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+            {weekDates.map((date, index) => {
+              const dayTimeblocks = getTimeblocksForDay(date);
+              const today = isToday(date);
+
+              return (
+                <div key={index} className="flex flex-col">
+                  <Card className={`mb-2 ${today ? 'ring-2 ring-blue-500' : ''}`}>
+                    <div className="text-center">
+                      <h3 className={`font-bold ${today ? 'text-gray-700' : 'text-gray-900'}`}>
+                        {weekDays[index]}
+                      </h3>
+                      <p className={`text-sm ${today ? 'text-gray-700 font-semibold' : 'text-gray-600'}`}>
+                        {date.getDate()} {date.toLocaleDateString('nl-NL', { month: 'short' })}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </Card>
 
-                {/* Days Columns */}
-                {weekDates.map((date, index) => {
-                  const dayTimeblocks = getTimeblocksForDay(date);
-                  
-                  return (
-                    <div key={index} className="border-r border-gray-200 last:border-r-0 relative bg-white">
-                      {/* Grid lines */}
-                      {HOURS.map((hour) => (
-                        <div key={hour} className="h-[60px] border-b border-gray-100"></div>
-                      ))}
-
-                      {/* Events */}
-                      {dayTimeblocks.map((timeblock) => (
-                        <div
-                          key={timeblock.id}
-                          className={`absolute left-1 right-1 rounded p-2 text-xs border cursor-pointer transition-all hover:z-10 hover:shadow-md overflow-hidden ${getStatusColor(timeblock.status)}`}
-                          style={getPositionStyles(timeblock.start_time, timeblock.end_time)}
-                          onClick={() => {
-                            if (isStudent && timeblock.status === 'available') {
-                              if (confirm('Wil je dit tijdblok reserveren?')) {
-                                handleReserve(timeblock.id);
-                              }
-                            }
-                          }}
-                        >
-                          <div className="font-bold truncate">
-                            {timeblock.class.name}
-                          </div>
-                          <div className="truncate text-opacity-75">
-                            {formatTime(timeblock.start_time)} - {formatTime(timeblock.end_time)}
-                          </div>
-                          <div className="truncate text-opacity-75">
-                            {timeblock.teacher.name}
-                          </div>
-                          {timeblock.reservation && (
-                            <div className="mt-1 pt-1 border-t border-black/10 truncate font-medium">
-                              {timeblock.reservation.student.name}
+                  <div className="space-y-2 flex-1">
+                    {dayTimeblocks.length === 0 ? (
+                      <Card className="h-full">
+                        <p className="text-gray-400 text-sm text-center py-4">Geen tijdblokken</p>
+                      </Card>
+                    ) : (
+                      dayTimeblocks.map((timeblock) => (
+                        <Card key={timeblock.id} className="hover:shadow-lg transition-shadow">
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <span className="text-sm font-bold text-gray-700">
+                                    {formatTime(timeblock.start_time)}
+                                  </span>
+                                  <span className="text-xs text-gray-500">-</span>
+                                  <span className="text-sm font-bold text-gray-700">
+                                    {formatTime(timeblock.end_time)}
+                                  </span>
+                                </div>
+                                <h4 className="font-semibold text-gray-900 text-sm">
+                                  {timeblock.class.name}
+                                </h4>
+                                <p className="text-xs text-gray-600">{timeblock.teacher.name}</p>
+                                <p className="text-xs text-gray-500">📍 {timeblock.location}</p>
+                              </div>
+                              <div>
+                                {getStatusBadge(timeblock.status)}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+
+                            {timeblock.reservation && (
+                              <div className="bg-gray-50 p-2 rounded text-xs">
+                                <p className="text-gray-800">
+                                  👤 {timeblock.reservation.student.name}
+                                </p>
+                              </div>
+                            )}
+
+                            {isStudent && timeblock.status === 'available' && (
+                              <Button
+                                size="sm"
+                                className="w-full"
+                                onClick={() => handleReserve(timeblock.id)}
+                              >
+                                Reserveren
+                              </Button>
+                            )}
+                          </div>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

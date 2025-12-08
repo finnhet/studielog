@@ -89,6 +89,7 @@ class TimeblockController extends Controller
         $endTime = \Carbon\Carbon::parse($validated['end_time']);
         $duration = (int) $validated['duration'];
 
+        // Check for overlaps with existing timeblocks
         $overlap = Timeblock::where('teacher_id', $request->user()->id)
             ->where(function ($query) use ($startTime, $endTime) {
                 $query->whereBetween('start_time', [$startTime, $endTime])
@@ -104,12 +105,14 @@ class TimeblockController extends Controller
             return back()->withErrors(['start_time' => 'Time slot overlaps with existing timeblock']);
         }
 
+        // Create multiple timeblocks based on duration
         $createdTimeblocks = [];
         $currentStart = $startTime->copy();
 
         while ($currentStart->lt($endTime)) {
             $currentEnd = $currentStart->copy()->addMinutes($duration);
             
+            // Don't create a timeblock if it would extend beyond the end time
             if ($currentEnd->gt($endTime)) {
                 break;
             }
@@ -127,14 +130,18 @@ class TimeblockController extends Controller
             $currentStart = $currentEnd->copy();
         }
 
+        // If no timeblocks were created, return an error
         if (empty($createdTimeblocks)) {
             return back()->withErrors(['duration' => 'Duration too long for the selected time range']);
         }
 
+        $timeblock = $createdTimeblocks[0]; // Use first timeblock for Outlook sync
+
         $user = $request->user();
-        $outlookSyncedCount = 0;
+        $outlookSynced = false;
         $outlookError = null;
 
+        
         try {
             if (!($user->microsoft_access_token && $user->microsoft_token_expires && $user->microsoft_token_expires > now())) {
                 if ($user->microsoft_refresh_token) {
@@ -163,24 +170,21 @@ class TimeblockController extends Controller
             }
 
             if ($user->microsoft_access_token && $user->microsoft_token_expires && $user->microsoft_token_expires > now()) {
+                \Log::info('Creating Outlook calendar event for timeblock ' . $timeblock->id);
                 $this->graphService->setAccessToken(decrypt($user->microsoft_access_token));
 
-                foreach ($createdTimeblocks as $timeblock) {
-                    \Log::info('Creating Outlook calendar event for timeblock ' . $timeblock->id);
+                $event = $this->graphService->createCalendarEvent([
+                    'subject' => 'Studiegesprek - ' . $timeblock->class->name,
+                    'body' => 'Studiegesprek tijdblok voor klas ' . $timeblock->class->name,
+                    'start_time' => \Carbon\Carbon::parse($timeblock->start_time)->toIso8601String(),
+                    'end_time' => \Carbon\Carbon::parse($timeblock->end_time)->toIso8601String(),
+                    'location' => $timeblock->location,
+                ]);
 
-                    $event = $this->graphService->createCalendarEvent([
-                        'subject' => 'Studiegesprek - ' . $timeblock->class->name,
-                        'body' => 'Studiegesprek tijdblok voor klas ' . $timeblock->class->name,
-                        'start_time' => \Carbon\Carbon::parse($timeblock->start_time)->toIso8601String(),
-                        'end_time' => \Carbon\Carbon::parse($timeblock->end_time)->toIso8601String(),
-                        'location' => $timeblock->location,
-                    ]);
-
-                    if (isset($event['id'])) {
-                        $timeblock->update(['outlook_event_id' => $event['id']]);
-                        $outlookSyncedCount++;
-                        \Log::info('Successfully created Outlook event: ' . $event['id']);
-                    }
+                if (isset($event['id'])) {
+                    $timeblock->update(['outlook_event_id' => $event['id']]);
+                    $outlookSynced = true;
+                    \Log::info('Successfully created Outlook event: ' . $event['id']);
                 }
             } else {
                 \Log::warning('No valid Microsoft access token for user ' . $user->id);
@@ -191,10 +195,8 @@ class TimeblockController extends Controller
         }
 
         $count = count($createdTimeblocks);
-        if ($outlookSyncedCount === $count) {
+        if ($outlookSynced) {
             return redirect()->route('timeblocks.index')->with('success', "{$count} tijdblokken aangemaakt en gesynchroniseerd met je Outlook agenda.");
-        } elseif ($outlookSyncedCount > 0) {
-            return redirect()->route('timeblocks.index')->with('warning', "{$count} tijdblokken aangemaakt, maar slechts {$outlookSyncedCount} gesynchroniseerd met Outlook.");
         } elseif ($outlookError) {
             return redirect()->route('timeblocks.index')->with('warning', "{$count} tijdblokken aangemaakt, maar synchronisatie met Outlook is mislukt. Koppel je Outlook opnieuw.");
         } else {
@@ -220,16 +222,11 @@ class TimeblockController extends Controller
         try {
             if (!($user->microsoft_access_token && $user->microsoft_token_expires && $user->microsoft_token_expires > now())) {
                 if ($user->microsoft_refresh_token) {
-                    $refreshToken = $user->microsoft_refresh_token;
-                    try {
-                        $refreshToken = decrypt($refreshToken);
-                    } catch (\Exception $e) {}
-
-                    $tokenResponse = $this->graphService->refreshAccessToken($refreshToken);
+                    $tokenResponse = $this->graphService->refreshAccessToken($user->microsoft_refresh_token);
                     if (isset($tokenResponse['access_token'])) {
                         $user->microsoft_access_token = encrypt($tokenResponse['access_token']);
                         if (isset($tokenResponse['refresh_token'])) {
-                            $user->microsoft_refresh_token = encrypt($tokenResponse['refresh_token']);
+                            $user->microsoft_refresh_token = $tokenResponse['refresh_token'];
                         }
                         $expiresIn = $tokenResponse['expires_in'] ?? 3600;
                         $user->microsoft_token_expires = now()->addSeconds($expiresIn);

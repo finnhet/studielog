@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Summary;
 use App\Models\Timeblock;
-use App\Models\ClassModel;
-use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -25,18 +23,6 @@ class SummaryController extends Controller
         } elseif ($request->user()->isTeacher()) {
             $query->whereHas('timeblock', function ($q) use ($request) {
                 $q->where('teacher_id', $request->user()->id);
-            });
-        }
-
-        if ($request->filled('teacher_id')) {
-            $query->whereHas('timeblock', function ($q) use ($request) {
-                $q->where('teacher_id', $request->teacher_id);
-            });
-        }
-
-        if ($request->filled('class_id')) {
-            $query->whereHas('timeblock', function ($q) use ($request) {
-                $q->where('class_id', $request->class_id);
             });
         }
 
@@ -65,8 +51,6 @@ class SummaryController extends Controller
 
         return Inertia::render('Summaries/Index', [
             'summaries' => $summaries,
-            'classes' => $request->user()->classes()->get(['classes.id', 'classes.name']),
-            'filters' => $request->only(['teacher_id', 'class_id']),
         ]);
     }
 

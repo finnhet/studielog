@@ -1,6 +1,6 @@
 import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button-legacy';
+import { Input } from '@/components/ui/input-legacy';
 import {
     InputOTP,
     InputOTPGroup,
