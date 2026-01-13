@@ -25,7 +25,8 @@ class SummaryPolicy
 
     public function update(User $user, Summary $summary): bool
     {
-        return $user->id === $summary->student_id && $summary->status === 'pending';
+        return $user->id === $summary->student_id && 
+               ($summary->status === 'pending' || $summary->status === 'rejected');
     }
 
     public function delete(User $user, Summary $summary): bool

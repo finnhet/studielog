@@ -1,9 +1,22 @@
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import Button from '@/components/ui/Button';
-import Badge from '@/components/ui/Badge';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Modal from '@/components/ui/Modal';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  MapPin, 
+  Clock, 
+  User, 
+  Calendar,
+  CalendarDays,
+  List,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  BookOpen
+} from 'lucide-react';
 
 interface User {
   id: number;
@@ -37,12 +50,32 @@ interface Props {
   weekStart: string;
 }
 
+type ViewMode = 'week' | 'list';
+
 export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date(weekStart));
+  // Read initial view mode from URL params
+  const getInitialViewMode = (): ViewMode => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      if (view === 'week' || view === 'list') return view;
+    }
+    return 'week';
+  };
+  const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode);
+  const [selectedTimeblock, setSelectedTimeblock] = useState<Timeblock | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const weekDays = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
   const START_HOUR = 8;
-  const END_HOUR = 18;
+  const END_HOUR = 17; // 5 PM
   const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
   
   const getWeekDates = (startDate: Date) => {
@@ -66,6 +99,7 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
     
     router.get('/agenda', {
       week: newDate.toISOString().split('T')[0],
+      view: viewMode,
     });
   };
 
@@ -77,6 +111,7 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
     
     router.get('/agenda', {
       week: monday.toISOString().split('T')[0],
+      view: viewMode,
     });
   };
 
@@ -100,14 +135,64 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
     return date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      available: 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200',
-      reserved: 'bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200',
-      completed: 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200',
-      cancelled: 'bg-red-100 border-red-300 text-red-800 hover:bg-red-200',
-    };
-    return colors[status] || 'bg-blue-100 border-blue-300 text-blue-800 hover:bg-blue-200';
+  const formatDateFull = (date: Date) => {
+    return date.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const statusConfig: Record<string, { 
+    bg: string; 
+    border: string; 
+    text: string; 
+    hover: string;
+    dot: string;
+    label: string;
+    icon: typeof CheckCircle;
+  }> = {
+    available: { 
+      bg: 'bg-emerald-50', 
+      border: 'border-emerald-200', 
+      text: 'text-emerald-700', 
+      hover: 'hover:bg-emerald-100 hover:border-emerald-300',
+      dot: 'bg-emerald-500',
+      label: 'Beschikbaar',
+      icon: CheckCircle
+    },
+    reserved: { 
+      bg: 'bg-amber-50', 
+      border: 'border-amber-200', 
+      text: 'text-amber-700', 
+      hover: 'hover:bg-amber-100 hover:border-amber-300',
+      dot: 'bg-amber-500',
+      label: 'Gereserveerd',
+      icon: AlertCircle
+    },
+    completed: { 
+      bg: 'bg-slate-50', 
+      border: 'border-slate-200', 
+      text: 'text-slate-600', 
+      hover: 'hover:bg-slate-100 hover:border-slate-300',
+      dot: 'bg-slate-400',
+      label: 'Voltooid',
+      icon: BookOpen
+    },
+    cancelled: { 
+      bg: 'bg-red-50', 
+      border: 'border-red-200', 
+      text: 'text-red-700', 
+      hover: 'hover:bg-red-100 hover:border-red-300',
+      dot: 'bg-red-500',
+      label: 'Geannuleerd',
+      icon: XCircle
+    },
+  };
+
+  const getStatusClasses = (status: string) => {
+    const config = statusConfig[status] || statusConfig.available;
+    return `${config.bg} ${config.border} ${config.text} ${config.hover}`;
+  };
+
+  const getStatusDot = (status: string) => {
+    return statusConfig[status]?.dot || 'bg-blue-500';
   };
 
   const isToday = (date: Date) => {
@@ -121,6 +206,7 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
 
   const handleReserve = (timeblockId: number) => {
     router.post('/reservations', { timeblock_id: timeblockId });
+    setSelectedTimeblock(null);
   };
 
   const isStudent = auth.user.role === 'student';
@@ -132,8 +218,8 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
     const startHour = startDate.getHours() + startDate.getMinutes() / 60;
     const endHour = endDate.getHours() + endDate.getMinutes() / 60;
     
-    const top = (startHour - START_HOUR) * 60; // 60px per hour
-    const height = (endHour - startHour) * 60;
+    const top = (startHour - START_HOUR) * 60; // 60px per hour for better spacing
+    const height = Math.max((endHour - startHour) * 60, 30); // minimum 30px height
     
     return {
       top: `${top}px`,
@@ -141,122 +227,422 @@ export default function AgendaIndex({ auth, timeblocks, weekStart }: Props) {
     };
   };
 
-  return (
-    <AuthenticatedLayout user={auth.user}>
-      <Head title="Agenda" />
+  const getCurrentTimePosition = () => {
+    const hour = currentTime.getHours() + currentTime.getMinutes() / 60;
+    if (hour < START_HOUR || hour > END_HOUR) return null;
+    return (hour - START_HOUR) * 60;
+  };
 
-      <div className="py-8 h-[calc(100vh-65px)] flex flex-col">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 w-full flex-1 flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">
-              Agenda
-            </h2>
-            <div className="flex items-center space-x-4">
-              <span className="text-lg font-medium text-gray-600">
-                {formatDate(weekDates[0])} - {formatDate(weekDates[6])}
-              </span>
-              <div className="flex space-x-1 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-                <button onClick={() => navigateWeek(-1)} className="p-1 hover:bg-gray-100 rounded">
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                <button onClick={goToToday} className="px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded">
-                  Vandaag
-                </button>
-                <button onClick={() => navigateWeek(1)} className="p-1 hover:bg-gray-100 rounded">
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
+  // Sort timeblocks for list view
+  const sortedTimeblocks = useMemo(() => {
+    return [...timeblocks].sort((a, b) => 
+      new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    );
+  }, [timeblocks]);
+
+  // Group timeblocks by day for list view
+  const groupedTimeblocks = useMemo(() => {
+    const groups: Record<string, Timeblock[]> = {};
+    sortedTimeblocks.forEach(tb => {
+      const dateKey = new Date(tb.start_time).toDateString();
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(tb);
+    });
+    return groups;
+  }, [sortedTimeblocks]);
+
+  const TimeblockCard = ({ timeblock, compact = false }: { timeblock: Timeblock; compact?: boolean }) => {
+    const StatusIcon = statusConfig[timeblock.status]?.icon || CheckCircle;
+    
+    return (
+      <div
+        className={`rounded-xl border-l-4 p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98] ${getStatusClasses(timeblock.status)}`}
+        style={{ borderLeftColor: getStatusDot(timeblock.status).replace('bg-', '') }}
+        onClick={() => setSelectedTimeblock(timeblock)}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm sm:text-base truncate">{timeblock.class.name}</div>
+            {!compact && (
+              <>
+                <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm opacity-80">
+                  <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{formatTime(timeblock.start_time)} - {formatTime(timeblock.end_time)}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-xs sm:text-sm opacity-80">
+                  <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{timeblock.location}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-xs sm:text-sm opacity-80">
+                  <User className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{timeblock.teacher.name}</span>
+                </div>
+              </>
+            )}
+            {compact && (
+              <div className="text-xs sm:text-sm opacity-80 mt-1">
+                {formatTime(timeblock.start_time)} - {formatTime(timeblock.end_time)}
               </div>
+            )}
+          </div>
+          <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ring-2 ring-white shadow-sm ${getStatusDot(timeblock.status)}`} />
+        </div>
+        {timeblock.reservation && (
+          <div className="mt-3 pt-3 border-t border-current/10">
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-medium">
+              <div className="w-6 h-6 rounded-full bg-white/50 flex items-center justify-center">
+                <User className="w-3.5 h-3.5" />
+              </div>
+              <span className="truncate">{timeblock.reservation.student.name}</span>
             </div>
           </div>
+        )}
+      </div>
+    );
+  };
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="grid grid-cols-8 border-b border-gray-200">
-              <div className="p-4 border-r border-gray-200 bg-gray-50"></div>
-              {weekDates.map((date, index) => (
-                <div 
-                  key={index} 
-                  className={`p-4 text-center border-r border-gray-200 last:border-r-0 ${
-                    isToday(date) ? 'bg-blue-50' : 'bg-white'
-                  }`}
-                >
-                  <div className={`text-xs font-medium uppercase mb-1 ${
-                    isToday(date) ? 'text-blue-600' : 'text-gray-500'
-                  }`}>
-                    {weekDays[index]}
-                  </div>
-                  <div className={`text-xl font-bold ${
-                    isToday(date) ? 'text-blue-700' : 'text-gray-900'
-                  }`}>
-                    {date.getDate()}
-                  </div>
+  const renderWeekView = () => (
+    <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col" style={{ height: 'calc(100vh - 260px)', minHeight: '500px' }}>
+      {/* Scrollable container for both header and grid */}
+      <div className="flex-1 scrollbar-thin" style={{ overflow: 'auto' }}>
+        <div className="min-w-[700px]">
+          {/* Header */}
+          <div className="grid grid-cols-[56px_repeat(7,1fr)] sm:grid-cols-[70px_repeat(7,1fr)] border-b border-gray-200 sticky top-0 bg-white z-10 shadow-sm">
+            <div className="p-2 sm:p-3 border-r border-gray-100 bg-gradient-to-b from-gray-50 to-white"></div>
+            {weekDates.map((date, index) => (
+              <div 
+                key={index} 
+                className={`p-2 sm:p-3 text-center border-r border-gray-100 last:border-r-0 transition-all ${
+                  isToday(date) ? 'bg-gradient-to-b from-indigo-50 to-indigo-25' : ''
+                }`}
+              >
+                <div className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-1 ${
+                  isToday(date) ? 'text-indigo-600' : 'text-gray-400'
+                }`}>
+                  {weekDays[index]}
                 </div>
-              ))}
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="flex-1 overflow-y-auto relative">
-              <div className="grid grid-cols-8 min-h-[600px]">
-                {/* Time Column */}
-                <div className="border-r border-gray-200 bg-gray-50">
-                  {HOURS.map((hour) => (
-                    <div key={hour} className="h-[60px] border-b border-gray-100 relative">
-                      <span className="absolute -top-3 right-2 text-xs text-gray-400">
-                        {hour}:00
-                      </span>
-                    </div>
-                  ))}
+                <div className={`text-base sm:text-xl font-bold ${
+                  isToday(date) ? 'text-indigo-600' : 'text-gray-900'
+                }`}>
+                  {date.getDate()}
                 </div>
+                {isToday(date) && (
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-indigo-500 rounded-full mx-auto mt-1" />
+                )}
+              </div>
+            ))}
+          </div>
 
-                {/* Days Columns */}
-                {weekDates.map((date, index) => {
-                  const dayTimeblocks = getTimeblocksForDay(date);
-                  
-                  return (
-                    <div key={index} className="border-r border-gray-200 last:border-r-0 relative bg-white">
-                      {/* Grid lines */}
-                      {HOURS.map((hour) => (
-                        <div key={hour} className="h-[60px] border-b border-gray-100"></div>
-                      ))}
+          {/* Calendar Grid */}
+          <div className="relative">
+            <div className="grid grid-cols-[56px_repeat(7,1fr)] sm:grid-cols-[70px_repeat(7,1fr)]" style={{ minHeight: `${(END_HOUR - START_HOUR + 1) * 60}px` }}>
+              {/* Time Column */}
+              <div className="border-r border-gray-100 bg-gradient-to-r from-gray-50/50 to-transparent">
+                {HOURS.map((hour) => (
+                  <div key={hour} className="h-[60px] border-b border-gray-50 relative">
+                    <span className="absolute -top-2.5 right-1.5 sm:right-2 text-[10px] sm:text-xs font-semibold text-gray-400 bg-white px-1">
+                      {hour.toString().padStart(2, '0')}:00
+                    </span>
+                  </div>
+                ))}
+              </div>
 
-                      {/* Events */}
-                      {dayTimeblocks.map((timeblock) => (
-                        <div
-                          key={timeblock.id}
-                          className={`absolute left-1 right-1 rounded p-2 text-xs border cursor-pointer transition-all hover:z-10 hover:shadow-md overflow-hidden ${getStatusColor(timeblock.status)}`}
-                          style={getPositionStyles(timeblock.start_time, timeblock.end_time)}
-                          onClick={() => {
-                            if (isStudent && timeblock.status === 'available') {
-                              if (confirm('Wil je dit tijdblok reserveren?')) {
-                                handleReserve(timeblock.id);
-                              }
-                            }
-                          }}
-                        >
-                          <div className="font-bold truncate">
-                            {timeblock.class.name}
-                          </div>
-                          <div className="truncate text-opacity-75">
+              {/* Days Columns */}
+              {weekDates.map((date, index) => {
+                const dayTimeblocks = getTimeblocksForDay(date);
+                const timePos = isToday(date) ? getCurrentTimePosition() : null;
+                
+                return (
+                  <div key={index} className={`border-r border-gray-100 last:border-r-0 relative ${
+                    isToday(date) ? 'bg-indigo-50/30' : 'bg-white'
+                  }`}>
+                    {/* Grid lines */}
+                    {HOURS.map((hour) => (
+                      <div key={hour} className="h-[60px] border-b border-gray-50 border-dashed"></div>
+                    ))}
+
+                    {/* Current time indicator */}
+                    {timePos !== null && (
+                      <div 
+                        className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                        style={{ top: `${timePos}px` }}
+                      >
+                        <div className="w-2.5 h-2.5 bg-red-500 rounded-full -ml-1 shadow-sm ring-2 ring-red-200" />
+                        <div className="flex-1 h-0.5 bg-gradient-to-r from-red-500 to-red-300" />
+                      </div>
+                    )}
+
+                    {/* Events */}
+                    {dayTimeblocks.map((timeblock) => (
+                      <div
+                        key={timeblock.id}
+                        className={`absolute left-0.5 right-0.5 sm:left-1 sm:right-1 rounded-lg border-l-4 cursor-pointer transition-all duration-200 hover:z-10 hover:shadow-lg hover:scale-[1.02] overflow-hidden shadow-sm ${getStatusClasses(timeblock.status)}`}
+                        style={getPositionStyles(timeblock.start_time, timeblock.end_time)}
+                        onClick={() => setSelectedTimeblock(timeblock)}
+                      >
+                        <div className="p-1.5 sm:p-2 h-full flex flex-col justify-between">
+                          <div className="font-bold text-[10px] sm:text-xs leading-tight truncate">{timeblock.class.name}</div>
+                          <div className="text-[9px] sm:text-[11px] opacity-80 truncate">
                             {formatTime(timeblock.start_time)} - {formatTime(timeblock.end_time)}
                           </div>
-                          <div className="truncate text-opacity-75">
-                            {timeblock.teacher.name}
-                          </div>
                           {timeblock.reservation && (
-                            <div className="mt-1 pt-1 border-t border-black/10 truncate font-medium">
-                              {timeblock.reservation.student.name}
+                            <div className="text-[8px] sm:text-[10px] font-medium truncate mt-auto pt-1 border-t border-current/10 hidden sm:block">
+                              👤 {timeblock.reservation.student.name}
                             </div>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  const renderListView = () => (
+    <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col" style={{ height: 'calc(100vh - 260px)', minHeight: '500px' }}>
+      <div className="flex-1 p-4 sm:p-6 scrollbar-thin" style={{ overflow: 'auto' }}>
+        {Object.keys(groupedTimeblocks).length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-gray-400">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4 sm:mb-6">
+              <Calendar className="w-10 h-10 sm:w-12 sm:h-12 opacity-50" />
+            </div>
+            <p className="text-lg sm:text-xl font-semibold text-gray-500">Geen tijdblokken deze week</p>
+            <p className="text-sm sm:text-base text-gray-400 mt-1">Probeer een andere week te selecteren</p>
+          </div>
+        ) : (
+          <div className="space-y-6 sm:space-y-8">
+            {Object.entries(groupedTimeblocks).map(([dateStr, dayBlocks]) => {
+              const date = new Date(dateStr);
+              return (
+                <div key={dateStr}>
+                  <div className={`flex items-center gap-3 mb-3 sm:mb-4 pb-3 border-b-2 ${isToday(date) ? 'border-indigo-200' : 'border-gray-100'}`}>
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm ${
+                      isToday(date) ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {date.getDate()}
+                    </div>
+                    <div className="flex-1">
+                      <div className={`font-bold text-base sm:text-lg ${isToday(date) ? 'text-indigo-600' : 'text-gray-900'}`}>
+                        {date.toLocaleDateString('nl-NL', { weekday: 'long' })}
+                      </div>
+                      <div className="text-xs sm:text-sm text-gray-500">
+                        {date.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}
+                      </div>
+                    </div>
+                    {isToday(date) && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-semibold bg-indigo-100 text-indigo-700 shadow-sm">
+                        Vandaag
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {dayBlocks.map((timeblock) => (
+                      <TimeblockCard key={timeblock.id} timeblock={timeblock} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <AuthenticatedLayout user={auth.user}>
+      <Head title="Agenda" />
+
+      <div className="flex flex-col">
+        <div className="w-full flex flex-col">
+          {/* Header */}
+          <div className="flex flex-col gap-4 mb-4 sm:mb-6 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 sm:p-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+                    <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </div>
+                  Agenda
+                </h2>
+                <p className="text-sm sm:text-base text-gray-500 mt-1 ml-11 sm:ml-[52px]">
+                  {formatDate(weekDates[0])} - {formatDate(weekDates[6])}
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                {/* View mode toggle */}
+                <div className="flex bg-gray-100 rounded-xl p-1 shadow-inner">
+                  <button 
+                    onClick={() => setViewMode('week')}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      viewMode === 'week' ? 'bg-white shadow-md text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <CalendarDays className="w-4 h-4" />
+                    <span className="sm:inline">Week</span>
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      viewMode === 'list' ? 'bg-white shadow-md text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <List className="w-4 h-4" />
+                    <span className="sm:inline">Lijst</span>
+                  </button>
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-200 p-1">
+                  <button 
+                    onClick={() => navigateWeek(-1)} 
+                    className="p-2 sm:p-2.5 hover:bg-gray-100 rounded-lg transition-colors active:scale-95"
+                    title="Vorige week"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <button 
+                    onClick={goToToday} 
+                    className="px-4 sm:px-5 py-1.5 sm:py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors active:scale-95"
+                  >
+                    Vandaag
+                  </button>
+                  <button 
+                    onClick={() => navigateWeek(1)} 
+                    className="p-2 sm:p-2.5 hover:bg-gray-100 rounded-lg transition-colors active:scale-95"
+                    title="Volgende week"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Legend - scrollable on mobile */}
+            <div className="flex gap-4 sm:gap-6 text-xs sm:text-sm overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-hide">
+              {Object.entries(statusConfig).map(([status, config]) => (
+                <div key={status} className="flex items-center gap-2 whitespace-nowrap">
+                  <div className={`w-3 h-3 rounded-full shadow-sm ring-2 ring-white ${config.dot}`} />
+                  <span className="text-gray-600 font-medium">{config.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Calendar View */}
+          {viewMode === 'week' && renderWeekView()}
+          {viewMode === 'list' && renderListView()}
+        </div>
+      </div>
+
+      {/* Detail Modal */}
+      <Modal
+        isOpen={selectedTimeblock !== null}
+        onClose={() => setSelectedTimeblock(null)}
+        title="Tijdblok Details"
+        size="md"
+      >
+        {selectedTimeblock && (
+          <div className="space-y-4 sm:space-y-6">
+            {/* Status badge */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span 
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium w-fit ${statusConfig[selectedTimeblock.status]?.bg} ${statusConfig[selectedTimeblock.status]?.text} border ${statusConfig[selectedTimeblock.status]?.border}`}
+              >
+                {statusConfig[selectedTimeblock.status]?.label || selectedTimeblock.status}
+              </span>
+              {isStudent && selectedTimeblock.status === 'available' && (
+                <span className="text-xs sm:text-sm text-emerald-600 font-medium">Beschikbaar voor reservering</span>
+              )}
+            </div>
+
+            {/* Class name */}
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">{selectedTimeblock.class.name}</h3>
+            </div>
+
+            {/* Details grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="p-1.5 sm:p-2 bg-white rounded-lg shadow-sm">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Tijd</div>
+                  <div className="font-semibold text-sm sm:text-base text-gray-900">
+                    {formatTime(selectedTimeblock.start_time)} - {formatTime(selectedTimeblock.end_time)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="p-1.5 sm:p-2 bg-white rounded-lg shadow-sm">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Datum</div>
+                  <div className="font-semibold text-sm sm:text-base text-gray-900">
+                    {new Date(selectedTimeblock.start_time).toLocaleDateString('nl-NL', { 
+                      weekday: 'long', 
+                      day: 'numeric', 
+                      month: 'long' 
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="p-1.5 sm:p-2 bg-white rounded-lg shadow-sm">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Locatie</div>
+                  <div className="font-semibold text-sm sm:text-base text-gray-900">{selectedTimeblock.location}</div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="p-1.5 sm:p-2 bg-white rounded-lg shadow-sm">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 font-medium">Docent</div>
+                  <div className="font-semibold text-sm sm:text-base text-gray-900">{selectedTimeblock.teacher.name}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Reservation info */}
+            {selectedTimeblock.reservation && (
+              <div className="p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-2 text-amber-700 font-medium mb-1 text-sm">
+                  <User className="w-4 h-4" />
+                  Gereserveerd door
+                </div>
+                <div className="text-base sm:text-lg font-bold text-amber-800">
+                  {selectedTimeblock.reservation.student.name}
+                </div>
+              </div>
+            )}
+
+            {/* Action button */}
+            {isStudent && selectedTimeblock.status === 'available' && (
+              <Button
+                onClick={() => handleReserve(selectedTimeblock.id)}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold transition-colors"
+              >
+                Reserveer dit tijdblok
+              </Button>
+            )}
+          </div>
+        )}
+      </Modal>
     </AuthenticatedLayout>
   );
 }

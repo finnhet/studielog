@@ -190,3 +190,53 @@
         }
     }
 }
+
+/* Custom scrollbar styles - outside of @layer for higher specificity */
+.scrollbar-thin {
+    overflow: auto !important;
+    scrollbar-width: thin;
+    scrollbar-color: #9ca3af #e5e7eb;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    display: block;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: #e5e7eb;
+    border-radius: 5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 5px;
+    border: 2px solid #e5e7eb;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Touch-friendly improvements for mobile */
+@media (max-width: 640px) {
+    .scrollbar-thin {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+}

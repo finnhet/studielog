@@ -110,7 +110,13 @@ class SummaryController extends Controller
             'content' => 'required|string',
         ]);
 
-        $summary->update($validated);
+        $updateData = $validated;
+        if ($summary->status === 'rejected') {
+            $updateData['status'] = 'pending';
+            $updateData['feedback'] = null;
+        }
+
+        $summary->update($updateData);
 
         return redirect()->route('summaries.index');
     }

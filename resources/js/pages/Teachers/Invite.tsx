@@ -32,21 +32,21 @@ export default function InviteTeacher({ auth }: Props) {
     <AuthenticatedLayout user={auth.user}>
       <Head title="Nodig Docent Uit" />
 
-      <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <Card title="Nodig een docent uit">
-            <div className="mb-6 text-gray-600">
+      <div className="py-4 sm:py-8">
+        <div className="max-w-7xl mx-auto">
+          <Card title="Nodig een docent uit" className="!p-4 sm:!p-6">
+            <div className="mb-4 sm:mb-6 text-sm sm:text-base text-gray-600">
               Stuur een uitnodiging naar een collega om een docent account aan te maken.
               De ontvanger krijgt een email met een link om zich te registreren via Microsoft.
             </div>
 
             {wasSuccessful && (
-              <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-md">
+              <div className="mb-4 p-3 sm:p-4 bg-green-100 text-green-700 rounded-md text-sm sm:text-base">
                 Uitnodiging succesvol verstuurd!
               </div>
             )}
 
-            <form onSubmit={submit} className="space-y-6 max-w-md">
+            <form onSubmit={submit} className="space-y-4 sm:space-y-6 max-w-md">
               <Input
                 label="Email adres van de docent"
                 type="email"
@@ -58,7 +58,7 @@ export default function InviteTeacher({ auth }: Props) {
               />
 
               <div className="flex items-center justify-end">
-                <Button type="submit" disabled={processing}>
+                <Button type="submit" disabled={processing} className="w-full sm:w-auto">
                   {processing ? 'Versturen...' : 'Verstuur Uitnodiging'}
                 </Button>
               </div>

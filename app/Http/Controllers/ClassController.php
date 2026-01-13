@@ -90,7 +90,7 @@ class ClassController extends Controller
 
     public function update(Request $request, ClassModel $class)
     {
-        $this->authorize('update', $class);
+        $this->authorize('update', $class);     
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',

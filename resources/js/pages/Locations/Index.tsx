@@ -82,11 +82,11 @@ export default function LocationsIndex({ auth, locations }: Props) {
     <AuthenticatedLayout user={auth.user}>
       <Head title="Vestigingen" />
 
-      <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">Vestigingen</h2>
-            <Button onClick={() => setIsCreateOpen(true)}>
+      <div className="py-4 sm:py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Vestigingen</h2>
+            <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
               + Nieuwe Vestiging
             </Button>
           </div>
@@ -95,55 +95,83 @@ export default function LocationsIndex({ auth, locations }: Props) {
             {locations.length === 0 ? (
               <p className="text-gray-500 text-center py-8">Geen vestigingen gevonden</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Naam
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Adres
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Aangemaakt door
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Acties
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {locations.map((location) => (
-                      <tr key={location.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{location.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{location.address}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{location.creator.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => openEdit(location)}
-                            className="text-gray-600 hover:text-gray-900 mr-4"
-                          >
-                            Bewerken
-                          </button>
-                          <button
-                            onClick={() => handleDelete(location.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Verwijderen
-                          </button>
-                        </td>
+              <>
+                {/* Mobile Card Layout */}
+                <div className="sm:hidden space-y-4">
+                  {locations.map((location) => (
+                    <div key={location.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="font-medium text-gray-900 text-lg">{location.name}</div>
+                      <div className="text-sm text-gray-500 mt-1">{location.address}</div>
+                      <div className="text-xs text-gray-400 mt-1">Door: {location.creator.name}</div>
+                      <div className="flex gap-3 mt-3 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => openEdit(location)}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                          Bewerken
+                        </button>
+                        <button
+                          onClick={() => handleDelete(location.id)}
+                          className="text-sm font-medium text-red-600 hover:text-red-800"
+                        >
+                          Verwijderen
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table Layout */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Naam
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Adres
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Aangemaakt door
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Acties
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {locations.map((location) => (
+                        <tr key={location.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{location.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500">{location.address}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500">{location.creator.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => openEdit(location)}
+                              className="text-gray-600 hover:text-gray-900 mr-4"
+                            >
+                              Bewerken
+                            </button>
+                            <button
+                              onClick={() => handleDelete(location.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Verwijderen
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </Card>
         </div>

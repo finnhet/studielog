@@ -121,7 +121,7 @@ export default function SummariesIndex({ auth, summaries, classes, filters }: Pr
       ? `/summaries/${actionSummary.id}/approve`
       : `/summaries/${actionSummary.id}/reject`;
 
-    postFeedback(endpoint, {
+    patchFeedback(endpoint, {
       onSuccess: () => {
         setFeedbackModalOpen(false);
         setActionSummary(null);
@@ -153,12 +153,13 @@ export default function SummariesIndex({ auth, summaries, classes, filters }: Pr
     <AuthenticatedLayout user={auth.user}>
       <Head title="Samenvattingen" />
 
-      <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-6">
-al            </div>
+      <div className="py-4 sm:py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Verslagen</h2>
+          </div>
 
-          <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-wrap gap-4 items-end">
+          <div className="bg-white p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 sm:items-end">
             <div className="w-full sm:w-64">
                 <Select
                     label="Filter op klas"
@@ -168,8 +169,8 @@ al            </div>
                 />
             </div>
             {(filters.class_id) && (
-                <div className="mb-4">
-                    <Button variant="secondary" onClick={() => router.get('/summaries')}>
+                <div className="sm:mb-4">
+                    <Button variant="secondary" onClick={() => router.get('/summaries')} className="w-full sm:w-auto">
                         Reset filters
                     </Button>
                 </div>
@@ -185,16 +186,16 @@ al            </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {summaries.map((summary) => (
-                <Card key={summary.id}>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-bold text-gray-900">
+                <Card key={summary.id} className="!p-4 sm:!p-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate">
                           {summary.timeblock.class.name}
                         </h3>
                         {getStatusBadge(summary.status)}
                       </div>
-                      <div className="space-y-1 text-sm text-gray-600">
+                      <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                         {isTeacher && (
                           <p>Student: {summary.student.name}</p>
                         )}
@@ -202,23 +203,27 @@ al            </div>
                         <p>Datum: {new Date(summary.timeblock.start_time).toLocaleDateString('nl-NL')}</p>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
-                      {isStudent && summary.status === 'pending' && (
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                      {isStudent && (summary.status === 'pending' || summary.status === 'rejected') && (
                         <>
                           <Button
                             size="sm"
                             variant="secondary"
                             onClick={() => openEditModal(summary)}
+                            className="flex-1 sm:flex-none"
                           >
-                            Bewerken
+                            {summary.status === 'rejected' ? 'Herschrijven' : 'Bewerken'}
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => handleDelete(summary.id)}
-                          >
-                            Verwijderen
-                          </Button>
+                          {summary.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={() => handleDelete(summary.id)}
+                              className="flex-1 sm:flex-none"
+                            >
+                              Verwijderen
+                            </Button>
+                          )}
                         </>
                       )}
                       {isTeacher && summary.status === 'pending' && (
@@ -227,6 +232,7 @@ al            </div>
                             size="sm"
                             variant="success"
                             onClick={() => openApproveModal(summary)}
+                            className="flex-1 sm:flex-none"
                           >
                             Goedkeuren
                           </Button>
@@ -234,6 +240,7 @@ al            </div>
                             size="sm"
                             variant="danger"
                             onClick={() => openRejectModal(summary)}
+                            className="flex-1 sm:flex-none"
                           >
                             Afwijzen
                           </Button>
@@ -242,15 +249,15 @@ al            </div>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-gray-900 mb-2">Samenvatting:</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap">{summary.content}</p>
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                    <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Samenvatting:</h4>
+                    <p className="text-gray-700 whitespace-pre-wrap text-sm sm:text-base">{summary.content}</p>
                   </div>
 
                   {summary.feedback && (
-                    <div className="mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h4 className="font-semibold text-gray-900 mb-2">Feedback:</h4>
-                      <p className="text-gray-800">{summary.feedback}</p>
+                    <div className="mt-3 sm:mt-4 bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Feedback:</h4>
+                      <p className="text-gray-800 text-sm sm:text-base">{summary.feedback}</p>
                     </div>
                   )}
                 </Card>
@@ -262,15 +269,6 @@ al            </div>
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingSummary ? 'Samenvatting Bewerken' : 'Nieuwe Samenvatting'}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            type="number"
-            label="Tijdblok ID"
-            value={data.timeblock_id}
-            onChange={(e) => setData('timeblock_id', parseInt(e.target.value))}
-            error={errors.timeblock_id}
-            required
-          />
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Inhoud

@@ -166,97 +166,158 @@ export default function TimeblocksIndex({ auth, timeblocks, classes }: Props) {
     <AuthenticatedLayout user={auth.user}>
       <Head title="Tijdblokken" />
 
-      <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">Tijdblokken</h2>
+      <div className="py-4 sm:py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Tijdblokken</h2>
             {isTeacher && (
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
                 + Nieuw Tijdblok
               </Button>
             )}
           </div>
 
-          <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-200">
+          <div className="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg border border-gray-200">
             {timeblocks.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
-                <p className="text-lg">Geen tijdblokken gevonden</p>
+              <div className="p-8 sm:p-12 text-center text-gray-500">
+                <p className="text-base sm:text-lg">Geen tijdblokken gevonden</p>
                 {isTeacher && <p className="text-sm mt-2">Maak een nieuw tijdblok aan om te beginnen.</p>}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum & Tijd</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klas & Docent</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Locatie</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {timeblocks.map((timeblock) => (
-                      <tr key={timeblock.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {new Date(timeblock.start_time).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(timeblock.start_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - 
-                            {new Date(timeblock.end_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{timeblock.class.name}</div>
+              <>
+                {/* Mobile Card Layout */}
+                <div className="sm:hidden divide-y divide-gray-200">
+                  {timeblocks.map((timeblock) => (
+                    <div key={timeblock.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <div className="font-semibold text-gray-900">{timeblock.class.name}</div>
                           {timeblock.teacher && (
                             <div className="text-xs text-gray-500">{timeblock.teacher.name}</div>
                           )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {timeblock.location}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col items-start gap-1">
-                            {getStatusBadge(timeblock.status)}
-                            {timeblock.reservation && (
-                              <span className="text-xs text-gray-500">
-                                {timeblock.reservation.student.name}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-3">
-                            {isTeacher ? (
-                              <>
-                                <button 
-                                  onClick={() => openEdit(timeblock)}
-                                  className="text-indigo-600 hover:text-indigo-900 font-medium"
-                                >
-                                  Bewerken
-                                </button>
-                                <button 
-                                  onClick={() => handleDelete(timeblock.id)}
-                                  className="text-red-600 hover:text-red-900 font-medium"
-                                >
-                                  Verwijderen
-                                </button>
-                              </>
-                            ) : (
-                              timeblock.status === 'available' && (
-                                <Button size="sm" onClick={() => handleReserve(timeblock.id)}>
-                                  Reserveren
-                                </Button>
-                              )
-                            )}
-                          </div>
-                        </td>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {getStatusBadge(timeblock.status)}
+                          {timeblock.reservation && (
+                            <span className="text-xs text-gray-500">
+                              {timeblock.reservation.student.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600 mb-2">
+                        <div className="font-medium">
+                          {new Date(timeblock.start_time).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </div>
+                        <div>
+                          {new Date(timeblock.start_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - 
+                          {new Date(timeblock.end_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="text-gray-500">{timeblock.location}</div>
+                      </div>
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                        {isTeacher ? (
+                          <>
+                            <button 
+                              onClick={() => openEdit(timeblock)}
+                              className="flex-1 py-2 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50"
+                            >
+                              Bewerken
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(timeblock.id)}
+                              className="flex-1 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                            >
+                              Verwijderen
+                            </button>
+                          </>
+                        ) : (
+                          timeblock.status === 'available' && (
+                            <Button size="sm" onClick={() => handleReserve(timeblock.id)} className="w-full">
+                              Reserveren
+                            </Button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table Layout */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum & Tijd</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klas & Docent</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Locatie</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acties</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {timeblocks.map((timeblock) => (
+                        <tr key={timeblock.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {new Date(timeblock.start_time).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(timeblock.start_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - 
+                              {new Date(timeblock.end_time).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{timeblock.class.name}</div>
+                            {timeblock.teacher && (
+                              <div className="text-xs text-gray-500">{timeblock.teacher.name}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {timeblock.location}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col items-start gap-1">
+                              {getStatusBadge(timeblock.status)}
+                              {timeblock.reservation && (
+                                <span className="text-xs text-gray-500">
+                                  {timeblock.reservation.student.name}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex justify-end space-x-3">
+                              {isTeacher ? (
+                                <>
+                                  <button 
+                                    onClick={() => openEdit(timeblock)}
+                                    className="text-indigo-600 hover:text-indigo-900 font-medium"
+                                  >
+                                    Bewerken
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDelete(timeblock.id)}
+                                    className="text-red-600 hover:text-red-900 font-medium"
+                                  >
+                                    Verwijderen
+                                  </button>
+                                </>
+                              ) : (
+                                timeblock.status === 'available' && (
+                                  <Button size="sm" onClick={() => handleReserve(timeblock.id)}>
+                                    Reserveren
+                                  </Button>
+                                )
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>
