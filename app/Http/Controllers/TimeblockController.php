@@ -23,6 +23,9 @@ class TimeblockController extends Controller
     {
         $this->authorize('viewAny', Timeblock::class);
 
+        // Delete expired timeblocks
+        Timeblock::where('end_time', '<', now())->delete();
+
         $query = Timeblock::with('teacher', 'class', 'reservation.student');
 
         if ($request->user()->isStudent()) {

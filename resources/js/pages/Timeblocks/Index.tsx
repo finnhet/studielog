@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -47,7 +47,7 @@ export default function TimeblocksIndex({ auth, timeblocks, classes }: Props) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTimeblock, setEditingTimeblock] = useState<Timeblock | null>(null);
 
-  // Local state for date/time pickers
+  
   const [createDate, setCreateDate] = useState('');
   const [createStartTime, setCreateStartTime] = useState('');
   const [createEndTime, setCreateEndTime] = useState('');
@@ -57,6 +57,36 @@ export default function TimeblocksIndex({ auth, timeblocks, classes }: Props) {
   const [editEndTime, setEditEndTime] = useState('');
 
   const isTeacher = auth.user.role === 'teacher';
+
+  const timePresets = [
+    { label: 'Ochtend', start: '08:30', end: '12:00' },
+    { label: 'Middag', start: '13:00', end: '16:30' },
+    { label: 'Hele dag', start: '08:30', end: '16:30' },
+    { label: '1e blok', start: '08:30', end: '10:00' },
+    { label: '2e blok', start: '10:15', end: '12:00' },
+    { label: '3e blok', start: '13:00', end: '15:00' },
+  ];
+
+  const applyTimePreset = (preset: { start: string; end: string }) => {
+    setCreateStartTime(preset.start);
+    setCreateEndTime(preset.end);
+  };
+
+  useEffect(() => {
+    const savedClassId = localStorage.getItem('timeblock_last_class_id');
+    const savedDuration = localStorage.getItem('timeblock_last_duration');
+    const savedLocation = localStorage.getItem('timeblock_last_location');
+    
+    if (savedClassId && classes.some(c => c.id.toString() === savedClassId)) {
+      createForm.setData('class_id', savedClassId);
+    }
+    if (savedDuration) {
+      createForm.setData('duration', savedDuration);
+    }
+    if (savedLocation) {
+      createForm.setData('location', savedLocation);
+    }
+  }, []);
 
   const createForm = useForm({
     class_id: '',
@@ -75,7 +105,6 @@ export default function TimeblocksIndex({ auth, timeblocks, classes }: Props) {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    // Ensure the form data is synced before submit
     const start = `${createDate}T${createStartTime}`;
     const end = `${createDate}T${createEndTime}`;
     
@@ -85,13 +114,31 @@ export default function TimeblocksIndex({ auth, timeblocks, classes }: Props) {
       end_time: end,
     }));
 
+    localStorage.setItem('timeblock_last_class_id', createForm.data.class_id);
+    localStorage.setItem('timeblock_last_duration', createForm.data.duration);
+    localStorage.setItem('timeblock_last_location', createForm.data.location);
+
     createForm.post('/timeblocks', {
       onSuccess: () => {
+        const savedClassId = createForm.data.class_id;
+        const savedDuration = createForm.data.duration;
+        const savedLocation = createForm.data.location;
+        
         createForm.reset();
         setCreateDate('');
         setCreateStartTime('');
         setCreateEndTime('');
         setIsCreateOpen(false);
+        
+        setTimeout(() => {
+          createForm.setData({
+            class_id: savedClassId,
+            duration: savedDuration,
+            location: savedLocation,
+            start_time: '',
+            end_time: '',
+          });
+        }, 0);
       },
     });
   };
@@ -130,13 +177,13 @@ export default function TimeblocksIndex({ auth, timeblocks, classes }: Props) {
   const openEdit = (timeblock: Timeblock) => {
     setEditingTimeblock(timeblock);
     
-    // Parse date and times from the timeblock
+    
     const start = new Date(timeblock.start_time);
     const end = new Date(timeblock.end_time);
     
-    // Format: YYYY-MM-DD
+    
     const d = start.toISOString().split('T')[0];
-    // Format: HH:mm
+    
     const st = start.toTimeString().slice(0, 5);
     const et = end.toTimeString().slice(0, 5);
 
@@ -341,6 +388,28 @@ export default function TimeblocksIndex({ auth, timeblocks, classes }: Props) {
               onChange={(e) => setCreateDate(e.target.value)}
               required
             />
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Snelle tijdselectie</label>
+              <div className="flex flex-wrap gap-2">
+                {timePresets.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => applyTimePreset(preset)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      createStartTime === preset.start && createEndTime === preset.end
+                        ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300'
+                    }`}
+                  >
+                    {preset.label}
+                    <span className="ml-1 text-xs text-gray-400">({preset.start}-{preset.end})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Starttijd"

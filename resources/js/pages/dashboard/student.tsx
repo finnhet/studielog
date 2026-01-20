@@ -248,7 +248,7 @@ export default function StudentDashboard({ auth, availableTimeblocks, upcomingRe
                     </div>
                     <h3 className="text-base sm:text-lg font-bold text-gray-900">Beschikbare Tijdblokken</h3>
                 </div>
-                <Link href="/timeblocks" className="text-xs sm:text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors">
+                <Link href="/agenda" className="text-xs sm:text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors">
                     <span className="hidden sm:inline">Alle tijdblokken</span> <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

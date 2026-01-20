@@ -103,14 +103,13 @@ export default function TeacherDashboard({ auth, upcomingTimeblocks, pendingSumm
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-            {/* Upcoming Timeblocks */}
             <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-100 flex flex-col">
                 <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
                         <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                         Aankomende Tijdblokken
                     </h3>
-                    <Link href="/timeblocks" className="text-xs sm:text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+                    <Link href="/agenda" className="text-xs sm:text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
                         <span className="hidden sm:inline">Alles bekijken</span> <ArrowRight className="w-4 h-4" />
                     </Link>
                 </div>
