@@ -24,6 +24,7 @@ Route::middleware('web')->group(function () {
     Route::get('auth/microsoft/redirect', [MicrosoftOAuthController::class, 'redirect'])->name('auth.microsoft.redirect');
     Route::get('auth/microsoft/callback', [MicrosoftOAuthController::class, 'callback'])->name('auth.microsoft.callback');
     Route::get('register/teacher', [TeacherInvitationController::class, 'startRegistration'])->name('register.teacher.start');
+    Route::get('classes/{class}/invite/accept', [ClassController::class, 'startInviteAccept'])->name('classes.invite.accept');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -35,12 +36,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('microsoft/callback', [MicrosoftAuthController::class, 'callback'])->name('microsoft.callback');
     Route::post('microsoft/disconnect', [MicrosoftAuthController::class, 'disconnect'])->name('microsoft.disconnect');
 
+    Route::get('locations/teachers/search', [LocationController::class, 'searchTeachers'])->name('locations.teachers.search');
     Route::resource('locations', LocationController::class)->except(['show', 'create', 'edit']);
+    Route::post('locations/{location}/teachers', [LocationController::class, 'addTeacher'])->name('locations.teachers.add');
+    Route::delete('locations/{location}/teachers', [LocationController::class, 'removeTeacher'])->name('locations.teachers.remove');
     
     Route::get('classes/students/search', [ClassController::class, 'searchStudents'])->name('classes.students.search');
+    Route::get('classes/teachers/search', [ClassController::class, 'searchTeachers'])->name('classes.teachers.search');
     Route::resource('classes', ClassController::class)->except(['show', 'create', 'edit']);
     Route::post('classes/{class}/students', [ClassController::class, 'addStudent'])->name('classes.students.add');
     Route::delete('classes/{class}/students', [ClassController::class, 'removeStudent'])->name('classes.students.remove');
+    Route::post('classes/{class}/teachers', [ClassController::class, 'addTeacher'])->name('classes.teachers.add');
+    Route::delete('classes/{class}/teachers', [ClassController::class, 'removeTeacher'])->name('classes.teachers.remove');
     Route::post('classes/{class}/invitations/accept', [ClassController::class, 'acceptInvitation'])->name('classes.invitations.accept');
     Route::post('classes/{class}/invitations/reject', [ClassController::class, 'rejectInvitation'])->name('classes.invitations.reject');
     

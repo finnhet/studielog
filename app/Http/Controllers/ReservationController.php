@@ -162,7 +162,6 @@ class ReservationController extends Controller
     protected function createStudentOutlookEvent(Timeblock $timeblock, $student)
     {
         try {
-            // Check if token needs refresh
             if (!($student->microsoft_access_token && $student->microsoft_token_expires && $student->microsoft_token_expires > now())) {
                 if ($student->microsoft_refresh_token) {
                     $refreshToken = $student->microsoft_refresh_token;
@@ -183,7 +182,6 @@ class ReservationController extends Controller
                 }
             }
 
-            // Create event if we have a valid token
             if ($student->microsoft_access_token && $student->microsoft_token_expires && $student->microsoft_token_expires > now()) {
                 $this->graphService->setAccessToken(decrypt($student->microsoft_access_token));
 

@@ -34,6 +34,9 @@ class ClassPolicy
 
     public function manageStudents(User $user, ClassModel $class): bool
     {
-        return $user->isTeacher() && $user->id === $class->created_by;
+        return $user->isTeacher() && (
+            $user->id === $class->created_by ||
+            $class->location->teachers()->where('user_id', $user->id)->exists()
+        );
     }
 }

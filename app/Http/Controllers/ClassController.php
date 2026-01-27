@@ -30,11 +30,36 @@ class ClassController extends Controller
         return response()->json($students);
     }
 
-    public function index()
+    public function searchTeachers(Request $request)
+    {
+        $query = $request->input('query');
+        
+        $teachers = User::where('role', 'teacher')
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->limit(10)
+            ->get(['id', 'name', 'email']);
+            
+        return response()->json($teachers);
+    }
+
+    public function index(Request $request)
     {
         $this->authorize('viewAny', ClassModel::class);
 
-        $classes = ClassModel::with('location', 'creator', 'users')->get()->map(function ($class) {
+        $user = $request->user();
+        
+        $teacherLocationIds = $user->locations()->pluck('locations.id');
+
+        $classesQuery = ClassModel::with('location', 'creator', 'users', 'teachers');
+        
+        if ($user->isTeacher()) {
+            $classesQuery->whereIn('location_id', $teacherLocationIds);
+        }
+
+        $classes = $classesQuery->get()->map(function ($class) {
             return [
                 'id' => $class->id,
                 'name' => $class->name,
@@ -47,27 +72,45 @@ class ClassController extends Controller
                 'creator' => [
                     'name' => $class->creator->name,
                 ],
-                'students' => $class->users->map(function ($user) {
+                'students' => $class->users->filter(fn($user) => $user->role === 'student')->map(function ($user) {
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
                         'status' => $user->pivot->status,
                     ];
+                })->values(),
+                'teachers' => $class->teachers->map(function ($teacher) {
+                    return [
+                        'id' => $teacher->id,
+                        'name' => $teacher->name,
+                        'email' => $teacher->email,
+                    ];
                 }),
             ];
         });
 
-        $locations = Location::all()->map(function ($location) {
-            return [
-                'id' => $location->id,
-                'name' => $location->name,
-            ];
-        });
+
+        $locations = $user->isTeacher() 
+            ? $user->locations()->get()->map(function ($location) {
+                return [
+                    'id' => $location->id,
+                    'name' => $location->name,
+                ];
+            })
+            : Location::all()->map(function ($location) {
+                return [
+                    'id' => $location->id,
+                    'name' => $location->name,
+                ];
+            });
+
+        $allTeachers = User::where('role', 'teacher')->get(['id', 'name', 'email']);
 
         return Inertia::render('Classes/Index', [
             'classes' => $classes,
             'locations' => $locations,
+            'allTeachers' => $allTeachers,
         ]);
     }
 
@@ -84,6 +127,8 @@ class ClassController extends Controller
             ...$validated,
             'created_by' => $request->user()->id,
         ]);
+
+        $class->teachers()->attach($request->user()->id);
 
         return redirect()->route('classes.index');
     }
@@ -122,12 +167,10 @@ class ClassController extends Controller
 
         $currentUser = $request->user();
         
-        // Check Microsoft connection
         if (!$currentUser->microsoft_access_token) {
             return back()->withErrors(['email' => 'Je moet verbonden zijn met Microsoft om uitnodigingen te versturen.']);
         }
 
-        // Refresh token if needed
         if ($currentUser->microsoft_token_expires && $currentUser->microsoft_token_expires->isPast()) {
             if ($currentUser->microsoft_refresh_token) {
                 try {
@@ -149,18 +192,20 @@ class ClassController extends Controller
             }
         }
 
+        $isNewUser = false;
+        
         if ($request->filled('user_id')) {
             $user = User::find($validated['user_id']);
         } else {
             $user = User::where('email', $validated['email'])->first();
             if (!$user) {
-                // Create a new student user if they don't exist
                 $user = User::create([
                     'name' => explode('@', $validated['email'])[0],
                     'email' => $validated['email'],
-                    'password' => null, // No password, they must use Microsoft
+                    'password' => null,
                     'role' => 'student',
                 ]);
+                $isNewUser = true;
             }
         }
 
@@ -176,31 +221,76 @@ class ClassController extends Controller
             return back()->withErrors(['email' => 'Student zit al in deze klas']);
         }
 
-        $class->users()->attach($user->id, ['status' => 'pending']);
-        
-        try {
-            $token = decrypt($currentUser->microsoft_access_token);
-            $graphService->setAccessToken($token);
+        if ($isNewUser) {
+            $class->users()->attach($user->id, ['status' => 'pending']);
+            
+            try {
+                $token = decrypt($currentUser->microsoft_access_token);
+                $graphService->setAccessToken($token);
 
-            $loginUrl = route('auth.microsoft.redirect');
+                $inviteUrl = \Illuminate\Support\Facades\URL::signedRoute('classes.invite.accept', [
+                    'class' => $class->id,
+                    'email' => $user->email,
+                ]);
 
-            $graphService->sendMail([
-                'subject' => "Uitnodiging voor klas: {$class->name}",
-                'body' => "
-                    <h1>Je bent uitgenodigd voor de klas {$class->name}</h1>
-                    <p>Beste {$user->name},</p>
-                    <p>Je bent door {$currentUser->name} uitgenodigd om deel te nemen aan de klas <strong>{$class->name}</strong> in StudieLog.</p>
-                    <p>Klik op de onderstaande link om in te loggen met je Microsoft account en de uitnodiging te accepteren:</p>
-                    <p><a href=\"{$loginUrl}\">Inloggen bij StudieLog</a></p>
-                ",
-                'to' => [$user->email],
-            ]);
+                $graphService->sendMail([
+                    'subject' => "Uitnodiging voor klas: {$class->name}",
+                    'body' => "
+                        <h1>Je bent uitgenodigd voor de klas {$class->name}</h1>
+                        <p>Beste {$user->name},</p>
+                        <p>Je bent door {$currentUser->name} uitgenodigd om deel te nemen aan de klas <strong>{$class->name}</strong> in StudieLog.</p>
+                        <p>Klik op de onderstaande link om in te loggen met je Microsoft account en automatisch toe te treden tot de klas:</p>
+                        <p><a href=\"{$inviteUrl}\">Inloggen en deelnemen aan {$class->name}</a></p>
+                    ",
+                    'to' => [$user->email],
+                ]);
 
-            return back()->with('success', 'Uitnodiging verstuurd naar student');
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to send class invitation email: ' . $e->getMessage());
-            return back()->with('success', 'Student toegevoegd, maar email kon niet worden verzonden: ' . $e->getMessage());
+                return back()->with('success', 'Uitnodiging verstuurd naar nieuwe student');
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send class invitation email: ' . $e->getMessage());
+                return back()->with('success', 'Student toegevoegd, maar email kon niet worden verzonden: ' . $e->getMessage());
+            }
+        } else {
+            $class->users()->attach($user->id, ['status' => 'accepted']);
+            
+            try {
+                $token = decrypt($currentUser->microsoft_access_token);
+                $graphService->setAccessToken($token);
+
+                $loginUrl = route('auth.microsoft.redirect');
+
+                $graphService->sendMail([
+                    'subject' => "Je bent toegevoegd aan klas: {$class->name}",
+                    'body' => "
+                        <h1>Je bent toegevoegd aan de klas {$class->name}</h1>
+                        <p>Beste {$user->name},</p>
+                        <p>Je bent door {$currentUser->name} toegevoegd aan de klas <strong>{$class->name}</strong> in StudieLog.</p>
+                        <p>Je kunt nu direct deelnemen aan tijdblokken van deze klas.</p>
+                        <p><a href=\"{$loginUrl}\">Ga naar StudieLog</a></p>
+                    ",
+                    'to' => [$user->email],
+                ]);
+
+                return back()->with('success', 'Student toegevoegd aan klas');
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send class notification email: ' . $e->getMessage());
+                return back()->with('success', 'Student toegevoegd, maar email kon niet worden verzonden');
+            }
         }
+    }
+
+    public function startInviteAccept(Request $request, ClassModel $class)
+    {
+        if (!$request->hasValidSignature()) {
+            abort(403, 'Invalid or expired invitation link.');
+        }
+
+        session([
+            'pending_class_id' => $class->id,
+            'pending_class_email' => $request->email,
+        ]);
+
+        return redirect()->route('auth.microsoft.redirect');
     }
 
     public function acceptInvitation(ClassModel $class)
@@ -234,5 +324,41 @@ class ClassController extends Controller
         $class->users()->detach($validated['user_id']);
 
         return redirect()->back();
+    }
+
+    public function addTeacher(Request $request, ClassModel $class)
+    {
+        $this->authorize('manageStudents', $class);
+
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        $user = User::find($validated['user_id']);
+
+        if (!$user->isTeacher()) {
+            return back()->withErrors(['user_id' => 'Gebruiker is geen docent']);
+        }
+
+        if ($class->teachers()->where('user_id', $user->id)->exists()) {
+            return back()->withErrors(['user_id' => 'Docent is al gekoppeld aan deze klas']);
+        }
+
+        $class->teachers()->attach($user->id);
+
+        return back()->with('success', 'Docent toegevoegd aan klas');
+    }
+
+    public function removeTeacher(Request $request, ClassModel $class)
+    {
+        $this->authorize('manageStudents', $class);
+
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        $class->teachers()->detach($validated['user_id']);
+
+        return back()->with('success', 'Docent verwijderd van klas');
     }
 }

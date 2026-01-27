@@ -24,7 +24,10 @@ class LocationPolicy
 
     public function update(User $user, Location $location): bool
     {
-        return $user->isTeacher() && $user->id === $location->created_by;
+        return $user->isTeacher() && (
+            $user->id === $location->created_by ||
+            $location->teachers()->where('user_id', $user->id)->exists()
+        );
     }
 
     public function delete(User $user, Location $location): bool

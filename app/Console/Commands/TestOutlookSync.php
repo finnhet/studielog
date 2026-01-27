@@ -71,7 +71,6 @@ class TestOutlookSync extends Command
             $this->info("✓ Token expires at: {$user->microsoft_token_expires}");
         }
 
-        // Try to create a test event
         $this->info("\nCreating test calendar event...");
         
         try {

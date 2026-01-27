@@ -69,7 +69,7 @@ interface Invitation {
 }
 
 interface MissingSummary {
-    id: number; // Reservation ID
+    id: number;
     timeblock: {
         id: number;
         start_time: string;
@@ -129,6 +129,11 @@ export default function StudentDashboard({ auth, availableTimeblocks, upcomingRe
     router.post('/reservations', { timeblock_id: timeblockId });
   };
 
+  const handleUnreserve = (reservationId: number) => {
+    if (!confirm('Weet je zeker dat je deze reservering wilt annuleren?')) return;
+    router.delete(`/reservations/${reservationId}`);
+  };
+
   const handleAcceptInvitation = (classId: number) => {
     router.post(`/classes/${classId}/invitations/accept`);
   };
@@ -156,7 +161,6 @@ export default function StudentDashboard({ auth, availableTimeblocks, upcomingRe
             <p className="text-gray-600 mt-1 sm:mt-2 text-base sm:text-lg">Plan je studiegesprekken en bekijk je laatste updates.</p>
           </div>
 
-          {/* Pending Invitations */}
           {pendingInvitations && pendingInvitations.length > 0 && (
             <div className="mb-6 sm:mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
               <Card className="border-l-4 border-l-blue-500 !p-4 sm:!p-6">
@@ -191,53 +195,37 @@ export default function StudentDashboard({ auth, availableTimeblocks, upcomingRe
             </div>
           )}
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <Card className="relative overflow-hidden group !p-4 sm:!p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Beschikbare tijdblokken</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.available}</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Beschikbare tijdblokken</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.available}</p>
+              </div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
               </div>
               <div className="mt-3 sm:mt-4 flex items-center text-sm text-blue-600 font-medium">
-                <Badge variant="success">Nu beschikbaar</Badge>
+              <Badge variant="success">Nu beschikbaar</Badge>
               </div>
             </Card>
 
             <Card className="relative overflow-hidden group !p-4 sm:!p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Aankomende reserveringen</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.upcoming}</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
-                  <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Aankomende reserveringen</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.upcoming}</p>
+              </div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
               </div>
               <div className="mt-3 sm:mt-4 flex items-center text-sm text-orange-600 font-medium">
-                <Badge variant="warning">Eerstvolgende</Badge>
+              <Badge variant="warning">Eerstvolgende</Badge>
               </div>
             </Card>
-
-            <Card className="relative overflow-hidden group !p-4 sm:!p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Openstaande verslagen</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.summaries}</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                  <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-              </div>
-              <div className="mt-3 sm:mt-4 flex items-center text-sm text-green-600 font-medium">
-                <Badge variant="warning">Actie vereist</Badge>
-              </div>
-            </Card>
-          </div>
+            </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
             <Card className="h-full !p-4 sm:!p-6">
@@ -289,7 +277,6 @@ export default function StudentDashboard({ auth, availableTimeblocks, upcomingRe
               )}
             </Card>
 
-            {/* Upcoming reservations */}
             <Card className="h-full !p-4 sm:!p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div className="flex items-center gap-2">
@@ -330,7 +317,9 @@ export default function StudentDashboard({ auth, availableTimeblocks, upcomingRe
                       </div>
                       <div className="flex flex-col items-start sm:items-end gap-2 ml-14 sm:ml-0">
                         <Badge variant="success">Gereserveerd</Badge>
-                        <Link href={`/reservations`} className="text-xs font-medium text-gray-500 hover:text-gray-800">Beheren</Link>
+                        <Button size="sm" variant="secondary" onClick={() => handleUnreserve(reservation.id)} className="text-xs w-full sm:w-auto">
+                            Annuleren
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -339,7 +328,6 @@ export default function StudentDashboard({ auth, availableTimeblocks, upcomingRe
             </Card>
           </div>
 
-          {/* Recent summaries */}
           <div className="mt-4 sm:mt-8">
             <Card className="!p-4 sm:!p-6">
                 <div className="flex items-center justify-between mb-4 sm:mb-6">

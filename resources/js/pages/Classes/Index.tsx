@@ -15,6 +15,12 @@ interface User {
   status?: string;
 }
 
+interface Teacher {
+  id: number;
+  name: string;
+  email: string;
+}
+
 interface Location {
   id: number;
   name: string;
@@ -30,21 +36,27 @@ interface ClassItem {
     name: string;
   };
   students: User[];
+  teachers: Teacher[];
 }
 
 interface Props {
   auth: { user: User };
   classes: ClassItem[];
   locations: Location[];
+  allTeachers: Teacher[];
 }
 
-export default function ClassesIndex({ auth, classes, locations }: Props) {
+export default function ClassesIndex({ auth, classes, locations, allTeachers }: Props) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [managingStudents, setManagingStudents] = useState<ClassItem | null>(null);
+  const [managingTeachers, setManagingTeachers] = useState<ClassItem | null>(null);
   const [studentEmail, setStudentEmail] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [teacherFilter, setTeacherFilter] = useState('');
+  const [teacherSuccess, setTeacherSuccess] = useState<string | null>(null);
 
   const createForm = useForm({
     name: '',
@@ -118,6 +130,7 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
     e.preventDefault();
     if (!managingStudents) return;
 
+    const invitedEmail = selectedUser ? selectedUser.email : studentEmail;
     const data = selectedUser 
         ? { user_id: selectedUser.id } 
         : { email: studentEmail };
@@ -127,6 +140,8 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
         setStudentEmail('');
         setSelectedUser(null);
         setSearchResults([]);
+        setInviteSuccess(`Uitnodiging verstuurd naar ${invitedEmail}`);
+        setTimeout(() => setInviteSuccess(null), 5000);
       },
     });
   };
@@ -138,6 +153,36 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
       });
     }
   };
+
+  const handleAddTeacher = (teacherId: number) => {
+    if (!managingTeachers) return;
+
+    const teacher = allTeachers.find(t => t.id === teacherId);
+    router.post(`/classes/${managingTeachers.id}/teachers`, { user_id: teacherId }, {
+      onSuccess: () => {
+        setTeacherFilter('');
+        setTeacherSuccess(`Docent ${teacher?.name} toegevoegd`);
+        setTimeout(() => setTeacherSuccess(null), 5000);
+      },
+    });
+  };
+
+  const handleRemoveTeacher = (classId: number, userId: number) => {
+    if (confirm('Weet je zeker dat je deze docent wilt verwijderen?')) {
+      router.delete(`/classes/${classId}/teachers`, {
+        data: { user_id: userId },
+      });
+    }
+  };
+
+  const availableTeachers = managingTeachers 
+    ? allTeachers.filter(teacher => 
+        !managingTeachers.teachers.some(t => t.id === teacher.id) &&
+        (teacherFilter === '' || 
+         teacher.name.toLowerCase().includes(teacherFilter.toLowerCase()) ||
+         teacher.email.toLowerCase().includes(teacherFilter.toLowerCase()))
+      )
+    : [];
 
   const openEdit = (classItem: ClassItem) => {
     setEditingClass(classItem);
@@ -174,10 +219,14 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
                       <p className="text-sm text-gray-600 mt-1">Vestiging: {classItem.location.name}</p>
                       <p className="text-sm text-gray-500">Aangemaakt door: {classItem.creator.name}</p>
                       <p className="text-sm text-gray-500">Studenten: {classItem.students.length}</p>
+                      <p className="text-sm text-gray-500">Docenten: {classItem.teachers.length}</p>
                     </div>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                       <Button size="sm" variant="secondary" onClick={() => setManagingStudents(classItem)} className="flex-1 sm:flex-none">
                         Studenten
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setManagingTeachers(classItem)} className="flex-1 sm:flex-none">
+                        Docenten
                       </Button>
                       <Button size="sm" variant="secondary" onClick={() => openEdit(classItem)} className="flex-1 sm:flex-none">
                         Bewerken
@@ -198,6 +247,22 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
                             className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800"
                           >
                             {student.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {classItem.teachers.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Docenten:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {classItem.teachers.map((teacher) => (
+                          <span
+                            key={teacher.id}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                          >
+                            {teacher.name}
                           </span>
                         ))}
                       </div>
@@ -272,9 +337,20 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
 
       <Modal
         isOpen={!!managingStudents}
-        onClose={() => setManagingStudents(null)}
+        onClose={() => {
+          setManagingStudents(null);
+          setInviteSuccess(null);
+        }}
         title={`Studenten Beheren - ${managingStudents?.name}`}
       >
+        {inviteSuccess && (
+          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md text-sm flex items-center justify-between">
+            <span>✓ {inviteSuccess}</span>
+            <button onClick={() => setInviteSuccess(null)} className="text-green-700 hover:text-green-900">
+              ×
+            </button>
+          </div>
+        )}
         <form onSubmit={handleAddStudent} className="mb-6 relative">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -339,6 +415,92 @@ export default function ClassesIndex({ auth, classes, locations }: Props) {
               ))}
             </div>
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!managingTeachers}
+        onClose={() => {
+          setManagingTeachers(null);
+          setTeacherSuccess(null);
+          setTeacherFilter('');
+        }}
+        title={`Docenten Beheren - ${managingTeachers?.name}`}
+      >
+        {teacherSuccess && (
+          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md text-sm flex items-center justify-between">
+            <span>✓ {teacherSuccess}</span>
+            <button onClick={() => setTeacherSuccess(null)} className="text-green-700 hover:text-green-900">
+              ×
+            </button>
+          </div>
+        )}
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Docent Toevoegen
+          </label>
+          <input
+            type="text"
+            className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            value={teacherFilter}
+            onChange={(e) => setTeacherFilter(e.target.value)}
+            placeholder="Filter op naam of email..."
+          />
+          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+            {availableTeachers.length === 0 ? (
+              <p className="p-3 text-gray-500 text-sm text-center">
+                {allTeachers.length === managingTeachers?.teachers.length 
+                  ? 'Alle docenten zijn al gekoppeld' 
+                  : 'Geen docenten gevonden'}
+              </p>
+            ) : (
+              availableTeachers.map(teacher => (
+                <div 
+                  key={teacher.id}
+                  className="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-b-0"
+                >
+                  <div>
+                    <div className="font-medium text-gray-900">{teacher.name}</div>
+                    <div className="text-xs text-gray-500">{teacher.email}</div>
+                  </div>
+                  <Button size="sm" onClick={() => handleAddTeacher(teacher.id)}>
+                    Toevoegen
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {managingTeachers && managingTeachers.teachers.length > 0 && (
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-3">Gekoppelde Docenten:</h4>
+            <div className="space-y-2">
+              {managingTeachers.teachers.map((teacher) => (
+                <div
+                  key={teacher.id}
+                  className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{teacher.name}</p>
+                    <p className="text-sm text-gray-600">{teacher.email}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => handleRemoveTeacher(managingTeachers.id, teacher.id)}
+                  >
+                    Verwijderen
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {managingTeachers && managingTeachers.teachers.length === 0 && (
+          <p className="text-gray-500 text-center py-4">Nog geen docenten gekoppeld aan deze klas</p>
         )}
       </Modal>
     </AuthenticatedLayout>

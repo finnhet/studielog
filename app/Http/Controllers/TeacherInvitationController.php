@@ -26,7 +26,6 @@ class TeacherInvitationController extends Controller
             return back()->withErrors(['email' => 'You must be connected to Microsoft to send invitations.']);
         }
 
-        // Check if token is expired and refresh if necessary
         if ($user->microsoft_token_expires && $user->microsoft_token_expires->isPast()) {
             if ($user->microsoft_refresh_token) {
                 try {
@@ -80,6 +79,10 @@ class TeacherInvitationController extends Controller
         }
 
         session(['register_role' => 'teacher']);
+        
+        if ($request->has('location_id')) {
+            session(['pending_location_id' => $request->location_id]);
+        }
         
         return redirect()->route('auth.microsoft.redirect');
     }
